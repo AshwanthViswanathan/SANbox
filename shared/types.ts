@@ -1,6 +1,9 @@
 export type {
   CosmoState,
   LessonListItem,
+  ParentDeviceControlRequest,
+  ParentDeviceControlResponse,
+  ParentDeviceControlState,
   LessonsResponse,
   ParentSessionDetailResponse,
   ParentSessionsResponse,

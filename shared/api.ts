@@ -89,6 +89,22 @@ export const parentSessionDetailResponseSchema = z.object({
   turns: z.array(parentSessionTurnSchema),
 })
 
+export const parentDeviceControlStateSchema = z.object({
+  device: z.enum(['active', 'paused', 'off']),
+  microphone: z.enum(['on', 'off']),
+  speaker: z.enum(['on', 'off']),
+})
+
+export const parentDeviceControlResponseSchema = z.object({
+  device_id: z.string(),
+  controls: parentDeviceControlStateSchema,
+  updated_at: z.string(),
+})
+
+export const parentDeviceControlRequestSchema = z.object({
+  controls: parentDeviceControlStateSchema,
+})
+
 export type CosmoState = z.infer<typeof cosmoStateSchema>
 export type TeachBoxMode = z.infer<typeof teachBoxModeSchema>
 export type SafeguardLabel = z.infer<typeof safeguardLabelSchema>
@@ -98,3 +114,6 @@ export type LessonListItem = z.infer<typeof lessonListItemSchema>
 export type LessonsResponse = z.infer<typeof lessonsResponseSchema>
 export type ParentSessionsResponse = z.infer<typeof parentSessionsResponseSchema>
 export type ParentSessionDetailResponse = z.infer<typeof parentSessionDetailResponseSchema>
+export type ParentDeviceControlState = z.infer<typeof parentDeviceControlStateSchema>
+export type ParentDeviceControlResponse = z.infer<typeof parentDeviceControlResponseSchema>
+export type ParentDeviceControlRequest = z.infer<typeof parentDeviceControlRequestSchema>

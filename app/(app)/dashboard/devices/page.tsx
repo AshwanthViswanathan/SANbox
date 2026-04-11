@@ -1,5 +1,6 @@
 import { Cpu, Mic, Radio, Volume2, Wifi, WifiOff } from 'lucide-react'
 
+import { DeviceCommandPanel } from '@/components/app/device-command-panel'
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge } from '@/components/app/teachbox-badges'
 import { StatusBadge } from '@/components/app/status-badge'
@@ -13,7 +14,7 @@ export default async function DevicesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Device Status"
-        description="Thin-client Raspberry Pi devices with simple connection and session visibility for the demo."
+        description="Thin-client Raspberry Pi devices with simple connection, parent controls, and session visibility for the demo."
         badge={`${onlineDevices}/${devices.length} ONLINE`}
       />
 
@@ -24,6 +25,15 @@ export default async function DevicesPage() {
           label="Flagged turns seen"
           value={String(devices.reduce((sum, device) => sum + device.flaggedTurns, 0))}
         />
+      </div>
+
+      <div className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,244,245,0.78))] px-5 py-4">
+        <p className="text-sm font-semibold text-foreground">Parent pause and power controls</p>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+          This adds a safe demo control in the dashboard without changing the existing parent session
+          routes, lessons route, or the child turn endpoint. The control state is local to the parent UI
+          until a dedicated device-command API exists.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -87,6 +97,11 @@ export default async function DevicesPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DeviceMetric label="Recent sessions" value={String(device.recentSessions)} />
                   <DeviceMetric label="Flagged turns" value={String(device.flaggedTurns)} />
+                  <DeviceCommandPanel
+                    deviceId={device.id}
+                    deviceName={device.name}
+                    isOnline={isOnline}
+                  />
 
                   <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4">
                     <div className="flex items-center gap-2">
