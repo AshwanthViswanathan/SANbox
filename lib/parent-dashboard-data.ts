@@ -5,6 +5,7 @@ import { cache } from 'react'
 import { loadLessons } from '@/backend/lessons/load-lessons'
 import { buildSessionDetail, buildSessionSummary } from '@/backend/storage/mock-sessions'
 import { MOCK_DEVICES } from '@/lib/mock-data'
+import { createClient } from '@/lib/supabase/server'
 import {
   lessonsResponseSchema,
   parentSessionDetailResponseSchema,
@@ -43,8 +44,21 @@ const DEVICE_HEALTH: Record<
   },
 }
 
+const getAuthenticatedUserId = cache(async () => {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  return user?.id ?? null
+})
+
 export const getParentSessions = cache(async () => {
-  const payload = buildSessionSummary()
+  const userId = await getAuthenticatedUserId()
+  if (!userId) return []
+
+  const supabase = await createClient()
+  const payload = await buildSessionSummary(supabase, userId)
   const parsed = parentSessionsResponseSchema.parse(payload)
 
   return [...parsed.sessions].sort(
@@ -53,7 +67,21 @@ export const getParentSessions = cache(async () => {
 })
 
 export const getParentSessionDetail = cache(async (sessionId: string) => {
-  const payload = buildSessionDetail(sessionId)
+  const userId = await getAuthenticatedUserId()
+  if (!userId) {
+    return parentSessionDetailResponseSchema.parse({
+      session: {
+        session_id: sessionId,
+        device_id: 'unknown_device',
+        mode: 'free_chat',
+        lesson_id: null,
+      },
+      turns: [],
+    })
+  }
+
+  const supabase = await createClient()
+  const payload = await buildSessionDetail(supabase, userId, sessionId)
   return parentSessionDetailResponseSchema.parse(payload)
 })
 

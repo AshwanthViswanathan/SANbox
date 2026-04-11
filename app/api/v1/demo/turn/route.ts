@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server'
 
 import { handleTurn } from '@/backend/pipeline/handle-turn'
 import { sessionTurnResponseSchema, teachBoxModeSchema } from '@/shared/api'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     const formData = await request.formData()
     const audio = formData.get('audio')
     const deviceId = String(formData.get('device_id') ?? '')
@@ -33,6 +38,7 @@ export async function POST(request: Request) {
       deviceId,
       sessionId,
       mode: modeResult.data,
+      ownerUserId: user?.id ?? null,
       lessonId,
       transcriptOverride,
     })

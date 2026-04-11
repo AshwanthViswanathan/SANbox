@@ -13,6 +13,7 @@ type HandleTurnInput = {
   deviceId: string
   sessionId: string
   mode: TeachBoxMode
+  ownerUserId?: string | null
   lessonId?: string | null
   transcriptOverride?: string | null
 }
@@ -64,7 +65,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       },
     }
 
-    logTurn(blockedTurn)
+    await logTurn(blockedTurn, input.ownerUserId)
     return blockedTurn
   }
 
@@ -123,6 +124,6 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     },
   }
 
-  logTurn(turn)
+  await logTurn(turn, input.ownerUserId)
   return turn
 }

@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     deviceId,
     sessionId,
     mode: modeResult.data,
+    ownerUserId: null,
     lessonId,
     transcriptOverride,
   })
