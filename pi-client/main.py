@@ -8,6 +8,13 @@ from state import PiState
 from ui import render_state
 
 
+def resolve_audio_url(base_url: str, audio_url: str) -> str:
+    if audio_url.startswith("data:") or audio_url.startswith("http://") or audio_url.startswith("https://"):
+        return audio_url
+
+    return f"{base_url}{audio_url}"
+
+
 def main() -> None:
     config = load_config()
 
@@ -36,7 +43,7 @@ def main() -> None:
 
             audio = result.get("audio")
             if audio and audio.get("url"):
-                play_audio_stub(f"{config.backend_url}{audio['url']}")
+                play_audio_stub(resolve_audio_url(config.backend_url, audio["url"]))
 
             render_state(PiState.IDLE, "Tap the button to talk to TeachBox.")
         except Exception as exc:

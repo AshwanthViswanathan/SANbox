@@ -7,6 +7,8 @@ import {
 } from '@/shared/api'
 import { TEACHBOX_DEVICE_TOKEN_ENV } from '@/shared/constants'
 
+export const runtime = 'nodejs'
+
 function getBearerToken(headerValue: string | null) {
   if (!headerValue?.startsWith('Bearer ')) return null
   return headerValue.slice(7)
