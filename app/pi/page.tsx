@@ -9,6 +9,10 @@ import { sessionTurnResponseSchema } from '@/shared/api'
 
 const IDLE_TEXT = 'Hold the button and ask a question.'
 const THINKING_TEXT = 'Thinking about that...'
+const MAX_INITIAL_SILENCE_MS = 5000
+const MAX_POST_SPEECH_SILENCE_MS = 1200
+const MAX_RECORDING_MS = 12000
+const SPEECH_RMS_THRESHOLD = 0.015
 
 type RecorderState = {
   stream: MediaStream
@@ -19,6 +23,8 @@ type RecorderState = {
   chunks: Float32Array[]
   sampleRate: number
   startedAt: number
+  speechDetected: boolean
+  lastVoiceAt: number | null
 }
 
 function makeBrowserId(prefix: string) {
@@ -136,11 +142,13 @@ export default function PiDisplayPage() {
   const [assistantText, setAssistantText] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
+  const [autoListenEnabled, setAutoListenEnabled] = useState(true)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
+  const autoRestartTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     const supported =
@@ -168,8 +176,28 @@ export default function PiDisplayPage() {
       recorderState?.silenceGain.disconnect()
       recorderState?.stream.getTracks().forEach((track) => track.stop())
       void recorderState?.audioContext.close()
+      if (autoRestartTimeoutRef.current !== null) {
+        window.clearTimeout(autoRestartTimeoutRef.current)
+      }
     }
   }, [])
+
+  const cancelAutoRestart = () => {
+    if (autoRestartTimeoutRef.current !== null) {
+      window.clearTimeout(autoRestartTimeoutRef.current)
+      autoRestartTimeoutRef.current = null
+    }
+  }
+
+  const scheduleAutoRestart = () => {
+    if (!autoListenEnabled) return
+
+    cancelAutoRestart()
+    autoRestartTimeoutRef.current = window.setTimeout(() => {
+      autoRestartTimeoutRef.current = null
+      void startRecording()
+    }, 350)
+  }
 
   const getContainerStyle = () => {
     switch (state) {
@@ -205,10 +233,11 @@ export default function PiDisplayPage() {
     }
   }
 
-  const stopRecorderAndSend = async () => {
+  const stopRecorderAndSend = async (reason: 'manual' | 'auto' = 'manual') => {
     const recorderState = recorderStateRef.current
     if (!recorderState || isStoppingRef.current) return
 
+    cancelAutoRestart()
     isStoppingRef.current = true
     setIsRecording(false)
     setState('thinking')
@@ -266,6 +295,9 @@ export default function PiDisplayPage() {
 
       setState('idle')
       setTranscript(IDLE_TEXT)
+      if (reason === 'auto' || autoListenEnabled) {
+        scheduleAutoRestart()
+      }
     } catch (error) {
       setState('error')
       setAssistantText('')
@@ -279,6 +311,7 @@ export default function PiDisplayPage() {
     if (!isSupported || isRecording || isStoppingRef.current) return
 
     try {
+      cancelAutoRestart()
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -297,6 +330,35 @@ export default function PiDisplayPage() {
       processor.onaudioprocess = (event) => {
         const input = event.inputBuffer.getChannelData(0)
         chunks.push(new Float32Array(input))
+
+        let sumSquares = 0
+        for (let index = 0; index < input.length; index += 1) {
+          sumSquares += input[index] * input[index]
+        }
+
+        const rms = Math.sqrt(sumSquares / input.length)
+        const currentRecorderState = recorderStateRef.current
+        if (!currentRecorderState) return
+
+        const now = Date.now()
+        if (rms >= SPEECH_RMS_THRESHOLD) {
+          currentRecorderState.speechDetected = true
+          currentRecorderState.lastVoiceAt = now
+          return
+        }
+
+        const elapsedMs = now - currentRecorderState.startedAt
+        const silenceMs = currentRecorderState.lastVoiceAt
+          ? now - currentRecorderState.lastVoiceAt
+          : now - currentRecorderState.startedAt
+
+        if (
+          (!currentRecorderState.speechDetected && elapsedMs >= MAX_INITIAL_SILENCE_MS) ||
+          (currentRecorderState.speechDetected && silenceMs >= MAX_POST_SPEECH_SILENCE_MS) ||
+          elapsedMs >= MAX_RECORDING_MS
+        ) {
+          void stopRecorderAndSend('auto')
+        }
       }
 
       source.connect(processor)
@@ -311,6 +373,8 @@ export default function PiDisplayPage() {
         chunks,
         sampleRate: audioContext.sampleRate,
         startedAt: Date.now(),
+        speechDetected: false,
+        lastVoiceAt: null,
       }
 
       setDebugTimings(null)
@@ -328,7 +392,7 @@ export default function PiDisplayPage() {
 
   const toggleRecording = async () => {
     if (isRecording) {
-      await stopRecorderAndSend()
+      await stopRecorderAndSend('manual')
       return
     }
 
@@ -402,16 +466,16 @@ export default function PiDisplayPage() {
             )}
           </button>
           <p className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
-            {isRecording ? 'Tap to stop' : 'Tap to talk'}
+            {isRecording ? 'Tap to stop' : autoListenEnabled ? 'Tap to start loop' : 'Tap to talk'}
           </p>
           <div className="flex gap-2">
             <button
               type="button"
               onMouseDown={() => void startRecording()}
-              onMouseUp={() => void stopRecorderAndSend()}
-              onMouseLeave={() => void stopRecorderAndSend()}
+              onMouseUp={() => void stopRecorderAndSend('manual')}
+              onMouseLeave={() => void stopRecorderAndSend('manual')}
               onTouchStart={() => void startRecording()}
-              onTouchEnd={() => void stopRecorderAndSend()}
+              onTouchEnd={() => void stopRecorderAndSend('manual')}
               className={cn(
                 'px-4 py-2 text-xs font-medium rounded-md transition-colors',
                 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -432,6 +496,24 @@ export default function PiDisplayPage() {
               className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
             >
               New Session
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextValue = !autoListenEnabled
+                setAutoListenEnabled(nextValue)
+                if (!nextValue) {
+                  cancelAutoRestart()
+                }
+              }}
+              className={cn(
+                'px-4 py-2 text-xs font-medium rounded-md transition-colors',
+                autoListenEnabled
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              )}
+            >
+              {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
             </button>
           </div>
         </div>
