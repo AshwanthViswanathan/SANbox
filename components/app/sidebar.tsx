@@ -3,22 +3,20 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard,
-  Bot,
-  Play,
-  ScrollText,
+  BookOpen,
   Cpu,
+  LayoutDashboard,
   Settings,
-  Zap,
-  ChevronDown,
+  Sparkles,
+  UserRoundSearch,
 } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Agents', href: '/dashboard/agents', icon: Bot },
-  { label: 'Runs', href: '/dashboard/runs', icon: Play },
-  { label: 'Logs', href: '/dashboard/logs', icon: ScrollText },
+  { label: 'Sessions', href: '/dashboard/sessions', icon: UserRoundSearch },
+  { label: 'Lessons', href: '/dashboard/lessons', icon: BookOpen },
   { label: 'Devices', href: '/dashboard/devices', icon: Cpu },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
@@ -31,48 +29,49 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="flex flex-col h-full bg-sidebar text-sidebar-foreground w-52 shrink-0">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border shrink-0">
-        <span className="flex items-center justify-center w-6 h-6 rounded bg-sidebar-primary text-sidebar-primary-foreground">
-          <Zap className="w-3.5 h-3.5" />
+    <aside className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4 shrink-0">
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+          <Sparkles className="h-4 w-4" />
         </span>
-        <span className="font-semibold text-sm tracking-tight">Agentic</span>
+        <div>
+          <div className="text-sm font-semibold tracking-tight">TeachBox</div>
+          <div className="text-[10px] font-mono text-sidebar-foreground/50">parent dashboard</div>
+        </div>
       </div>
 
-      {/* Workspace selector */}
-      <div className="px-3 py-2 border-b border-sidebar-border">
-        <button className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-sidebar-accent transition-colors text-left">
-          <div>
-            <div className="text-xs font-medium text-sidebar-foreground">Default Workspace</div>
-            <div className="text-[10px] text-sidebar-foreground/50 font-mono">workspace / default</div>
-          </div>
-          <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/40" />
-        </button>
+      <div className="border-b border-sidebar-border px-3 py-3">
+        <div className="rounded-lg bg-sidebar-accent px-3 py-2">
+          <div className="text-xs font-medium text-sidebar-foreground">Active family</div>
+          <div className="truncate text-[11px] text-sidebar-foreground/60">{email}</div>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 overflow-y-auto">
-        <p className="px-2 mb-1 text-[10px] font-mono uppercase tracking-widest text-sidebar-foreground/30">
-          Platform
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <p className="mb-2 px-2 text-[10px] font-mono uppercase tracking-widest text-sidebar-foreground/30">
+          TeachBox
         </p>
-        <ul className="space-y-0.5">
+        <ul className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href
+            const active =
+              item.href === '/dashboard'
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(`${item.href}/`)
+
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors',
+                    'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
                     active
                       ? 'bg-sidebar-accent text-sidebar-foreground font-medium'
-                      : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/60'
+                      : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {item.label}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
                 </Link>
               </li>
             )
@@ -80,15 +79,11 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
         </ul>
       </nav>
 
-      {/* User area */}
-      <div className="px-3 py-3 border-t border-sidebar-border">
-        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-sidebar-accent transition-colors cursor-pointer">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-semibold shrink-0">
-            {email.slice(0, 1).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-sidebar-foreground truncate">{email}</div>
-            <div className="text-[10px] text-sidebar-foreground/40 font-mono">google oauth</div>
+      <div className="border-t border-sidebar-border px-3 py-3">
+        <div className="rounded-lg px-2 py-2 text-xs text-sidebar-foreground/60">
+          Demo mode
+          <div className="mt-1 text-[10px] font-mono text-sidebar-foreground/40">
+            static L face + animated mouth
           </div>
         </div>
       </div>

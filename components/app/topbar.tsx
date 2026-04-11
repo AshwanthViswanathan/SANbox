@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Bell, Menu, X, Zap } from 'lucide-react'
+import { Search, Bell, Menu, X, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { DashboardSidebar } from './sidebar'
@@ -9,9 +9,8 @@ import { SignOutButton } from '@/components/auth/sign-out-button'
 
 const breadcrumbMap: Record<string, string> = {
   '/dashboard': 'Overview',
-  '/dashboard/agents': 'Agents',
-  '/dashboard/runs': 'Runs',
-  '/dashboard/logs': 'Logs',
+  '/dashboard/sessions': 'Sessions',
+  '/dashboard/lessons': 'Lessons',
   '/dashboard/devices': 'Devices',
   '/dashboard/settings': 'Settings',
 }
@@ -23,7 +22,10 @@ type DashboardTopbarProps = {
 export function DashboardTopbar({ email }: DashboardTopbarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const title = breadcrumbMap[pathname] ?? 'Dashboard'
+  
+  // Try to find exact match first, then fallback to base path
+  const title = breadcrumbMap[pathname] ?? 
+    (pathname.startsWith('/dashboard/sessions/') ? 'Session Details' : 'Dashboard')
 
   return (
     <>
@@ -53,14 +55,10 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
         <div className="flex items-center gap-2">
           <div className="hidden lg:block text-right mr-1">
             <p className="text-xs font-medium">{email}</p>
-            <p className="text-[10px] text-muted-foreground">Supabase session</p>
+            <p className="text-[10px] text-muted-foreground">Family Account</p>
           </div>
-          <button className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Search">
-            <Search className="w-4 h-4" />
-          </button>
           <button className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Notifications">
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
           </button>
           <SignOutButton />
         </div>

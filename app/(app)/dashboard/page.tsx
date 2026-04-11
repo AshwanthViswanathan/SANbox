@@ -1,53 +1,55 @@
-import { OVERVIEW_STATS, MOCK_EVENTS, MOCK_RUNS } from '@/lib/mock-data'
+import { OVERVIEW_STATS, MOCK_SESSIONS, MOCK_SESSION_DETAILS, MOCK_DEVICES } from '@/lib/mock-data'
 import { PageHeader } from '@/components/app/page-header'
-import { StatusBadge } from '@/components/app/status-badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowRight, Bot, Play, ScrollText, Cpu, AlertTriangle } from 'lucide-react'
+import { ArrowRight, MessageSquareText, ShieldAlert, BookOpen, Cpu, CheckCircle2 } from 'lucide-react'
 
 const statCards = [
   {
-    label: 'Agents',
-    value: String(OVERVIEW_STATS.totalAgents),
-    sub: `${OVERVIEW_STATS.runningAgents} running`,
-    icon: <Bot className="w-4 h-4" />,
-    href: '/dashboard/agents',
+    label: 'Sessions today',
+    value: String(OVERVIEW_STATS.totalSessionsToday),
+    sub: 'Active learning time',
+    icon: <MessageSquareText className="w-4 h-4" />,
+    href: '/dashboard/sessions',
   },
   {
-    label: 'Runs today',
-    value: String(OVERVIEW_STATS.runsToday),
-    sub: `${OVERVIEW_STATS.failedRuns} failed`,
-    icon: <Play className="w-4 h-4" />,
-    href: '/dashboard/runs',
+    label: 'Flagged turns',
+    value: String(OVERVIEW_STATS.flaggedTurnsToday),
+    sub: 'Requires review',
+    icon: <ShieldAlert className="w-4 h-4" />,
+    href: '/dashboard/sessions?filter=flagged',
   },
   {
-    label: 'Events',
-    value: String(OVERVIEW_STATS.totalEvents),
-    sub: 'last 24 hours',
-    icon: <ScrollText className="w-4 h-4" />,
-    href: '/dashboard/logs',
+    label: 'Lessons used',
+    value: String(OVERVIEW_STATS.lessonsUsedToday),
+    sub: 'Curriculum progress',
+    icon: <BookOpen className="w-4 h-4" />,
+    href: '/dashboard/lessons',
   },
   {
-    label: 'Devices',
-    value: `${OVERVIEW_STATS.onlineDevices}/${OVERVIEW_STATS.totalDevices}`,
-    sub: 'online',
+    label: 'Active devices',
+    value: `${OVERVIEW_STATS.activeDevices}/${MOCK_DEVICES.length}`,
+    sub: 'Online now',
     icon: <Cpu className="w-4 h-4" />,
     href: '/dashboard/devices',
   },
 ]
 
+const FLAGGED_TURNS = Object.entries(MOCK_SESSION_DETAILS)
+  .flatMap(([sessionId, detail]) =>
+    detail.turns
+      .filter((turn) => turn.input_label !== 'SAFE' || turn.output_label !== 'SAFE')
+      .map((turn) => ({ sessionId, turn }))
+  )
+  .slice(0, 3)
+
 export default function DashboardOverview() {
   return (
     <div>
       <PageHeader
-        title="Overview"
-        description="System health and recent activity"
+        title="Family Dashboard"
+        description="Review learning sessions and device activity"
         badge="LIVE"
-        action={
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/dashboard/agents">Manage agents</Link>
-          </Button>
-        }
       />
 
       {/* Stats grid */}
@@ -62,85 +64,88 @@ export default function DashboardOverview() {
               <span className="text-xs text-muted-foreground">{stat.label}</span>
               <span className="text-muted-foreground/50 group-hover:text-accent transition-colors">{stat.icon}</span>
             </div>
-            <div className="text-2xl font-bold font-mono tracking-tight">{stat.value}</div>
+            <div className="text-2xl font-bold font-sans tracking-tight">{stat.value}</div>
             <div className="text-xs text-muted-foreground">{stat.sub}</div>
           </Link>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Recent runs */}
+        {/* Recent sessions */}
         <div className="panel overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium">Recent Runs</span>
+            <span className="text-sm font-medium">Recent Sessions</span>
             <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
-              <Link href="/dashboard/runs" className="flex items-center gap-1">
+              <Link href="/dashboard/sessions" className="flex items-center gap-1">
                 View all <ArrowRight className="w-3 h-3" />
               </Link>
             </Button>
           </div>
           <div className="divide-y divide-border">
-            {MOCK_RUNS.slice(0, 5).map((run) => (
-              <div key={run.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <div className="flex items-center gap-3 min-w-0">
-                  <StatusBadge status={run.status} />
-                  <span className="font-mono text-xs text-muted-foreground shrink-0">{run.id}</span>
-                  <span className="text-foreground truncate">{run.agentName}</span>
+            {MOCK_SESSIONS.slice(0, 5).map((session) => {
+              const date = new Date(session.started_at)
+              const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              const dateString = date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+              
+              return (
+                <div key={session.session_id} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${session.mode === 'lesson' ? 'bg-accent' : 'bg-chart-2'}`} />
+                    <div>
+                      <div className="font-medium text-foreground">{session.mode === 'lesson' ? 'Lesson Mode' : 'Free Chat'}</div>
+                      <div className="text-xs text-muted-foreground">{session.turn_count} turns • {timeString}, {dateString}</div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <Link href={`/dashboard/sessions/${session.session_id}`}>Review</Link>
+                  </Button>
                 </div>
-                <span className="text-xs text-muted-foreground font-mono shrink-0 ml-2">
-                  {run.duration != null ? `${run.duration}s` : '—'}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
-        {/* Live event log */}
+        {/* Recent Flagged Moments */}
         <div className="panel overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium">Event Stream</span>
-            <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
-              <Link href="/dashboard/logs" className="flex items-center gap-1">
-                Full log <ArrowRight className="w-3 h-3" />
-              </Link>
-            </Button>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-destructive/5">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-destructive" />
+              <span className="text-sm font-medium text-destructive">Needs Review</span>
+            </div>
           </div>
-          <div className="bg-foreground/[0.02] px-4 py-3 space-y-1.5 font-mono text-[12px] min-h-[240px]">
-            {MOCK_EVENTS.slice(0, 8).map((evt) => (
-              <div key={evt.id} className="flex gap-3">
-                <span className="text-muted-foreground/50 shrink-0 w-14">{evt.timestamp}</span>
-                <span
-                  className={
-                    evt.level === 'error'
-                      ? 'text-destructive'
-                      : evt.level === 'warn'
-                      ? 'text-yellow-600'
-                      : evt.level === 'debug'
-                      ? 'text-muted-foreground/50'
-                      : 'text-accent'
-                  }
-                >
-                  {evt.source}
-                </span>
-                <span className="text-foreground/70 truncate">{evt.message}</span>
+          <div className="divide-y divide-border">
+            {FLAGGED_TURNS.map(({ sessionId, turn }) => {
+              const labelColor = turn.input_label === 'BLOCK' ? 'bg-destructive text-destructive-foreground' : 'bg-yellow-500 text-white'
+              return (
+                <div key={turn.turn_id} className="p-4 text-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${labelColor}`}>
+                      {turn.input_label}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {new Date(turn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="bg-surface-sunken p-2.5 rounded-lg border border-border/50 text-foreground/80">
+                    "{turn.transcript}"
+                  </div>
+                  <div className="flex justify-end">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" asChild>
+                      <Link href={`/dashboard/sessions/${sessionId}`}>View context</Link>
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+            {OVERVIEW_STATS.flaggedTurnsToday === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-50" />
+                <p>All conversations are safe.<br/>No flagged moments to review.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
-
-      {/* Alert banner for failed runs */}
-      {OVERVIEW_STATS.failedRuns > 0 && (
-        <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span>
-            {OVERVIEW_STATS.failedRuns} run{OVERVIEW_STATS.failedRuns > 1 ? 's' : ''} failed in the last 24 hours.{' '}
-            <Link href="/dashboard/runs" className="underline underline-offset-2 hover:opacity-80">
-              Review runs
-            </Link>
-          </span>
-        </div>
-      )}
     </div>
   )
 }
