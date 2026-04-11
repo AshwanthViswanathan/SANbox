@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Bell, Menu, X, Sparkles } from 'lucide-react'
+import { Bell, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { DashboardSidebar } from './sidebar'

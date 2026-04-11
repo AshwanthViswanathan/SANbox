@@ -1,3 +1,4 @@
+import { MOCK_SESSION_DETAILS, MOCK_SESSIONS } from '@/lib/mock-data'
 import type {
   ParentSessionDetailResponse,
   ParentSessionsResponse,
@@ -5,44 +6,21 @@ import type {
   TeachBoxMode,
 } from '@/shared/types'
 
-const MOCK_SESSION_ID = 'sess_demo_001'
-const now = new Date().toISOString()
-
 export function buildSessionSummary(): ParentSessionsResponse {
   return {
-    sessions: [
-      {
-        session_id: MOCK_SESSION_ID,
-        device_id: 'pi_01',
-        started_at: now,
-        last_turn_at: now,
-        mode: 'lesson',
-        turn_count: 3,
-        flagged_count: 1,
-      },
-    ],
+    sessions: [...MOCK_SESSIONS],
   }
 }
 
 export function buildSessionDetail(sessionId: string): ParentSessionDetailResponse {
-  return {
+  return MOCK_SESSION_DETAILS[sessionId] ?? {
     session: {
       session_id: sessionId,
-      device_id: 'pi_01',
-      mode: 'lesson',
-      lesson_id: 'moon-basics',
+      device_id: 'unknown_device',
+      mode: 'free_chat',
+      lesson_id: null,
     },
-    turns: [
-      {
-        turn_id: 'turn_demo_001',
-        created_at: now,
-        transcript: 'Why does the moon follow me?',
-        assistant_text: 'It looks that way because the moon is very far away.',
-        input_label: 'SAFE',
-        output_label: 'SAFE',
-        blocked: false,
-      },
-    ],
+    turns: [],
   }
 }
 
