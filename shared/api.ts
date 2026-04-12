@@ -56,6 +56,54 @@ export const lessonsResponseSchema = z.object({
   lessons: z.array(lessonListItemSchema),
 })
 
+export const lessonAssignmentStatusSchema = z.enum(['none', 'assigned', 'active', 'completed'])
+
+export const deviceLessonAssignmentSchema = z.object({
+  lesson_id: z.string(),
+  title: z.string(),
+  grade_band: z.string(),
+  topic: z.string(),
+  assigned_at: z.string(),
+  assigned_by_user_id: z.string().nullable().optional(),
+})
+
+export const deviceLessonStateSchema = z.object({
+  device_id: z.string(),
+  status: lessonAssignmentStatusSchema,
+  assigned_lesson: deviceLessonAssignmentSchema.nullable(),
+  active_session_id: z.string().nullable(),
+  active_lesson_id: z.string().nullable(),
+  current_step_id: z.string().nullable(),
+  started_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  updated_at: z.string(),
+})
+
+export const assignLessonRequestSchema = z.object({
+  lesson_id: z.string().nullable(),
+})
+
+export const assignLessonResponseSchema = z.object({
+  device_id: z.string(),
+  status: lessonAssignmentStatusSchema,
+  assigned_lesson: deviceLessonAssignmentSchema.nullable(),
+  updated_at: z.string(),
+})
+
+export const startLessonRequestSchema = z.object({
+  session_id: z.string(),
+})
+
+export const startLessonResponseSchema = z.object({
+  device_id: z.string(),
+  session_id: z.string(),
+  mode: z.literal('lesson'),
+  lesson: lessonPointerSchema,
+  prompt_text: z.string(),
+  status: lessonAssignmentStatusSchema,
+  started_at: z.string(),
+})
+
 export const parentSessionSummarySchema = z.object({
   session_id: z.string(),
   device_id: z.string(),
@@ -113,6 +161,13 @@ export type SafeguardResult = z.infer<typeof safeguardResultSchema>
 export type SessionTurnResponse = z.infer<typeof sessionTurnResponseSchema>
 export type LessonListItem = z.infer<typeof lessonListItemSchema>
 export type LessonsResponse = z.infer<typeof lessonsResponseSchema>
+export type LessonAssignmentStatus = z.infer<typeof lessonAssignmentStatusSchema>
+export type DeviceLessonAssignment = z.infer<typeof deviceLessonAssignmentSchema>
+export type DeviceLessonState = z.infer<typeof deviceLessonStateSchema>
+export type AssignLessonRequest = z.infer<typeof assignLessonRequestSchema>
+export type AssignLessonResponse = z.infer<typeof assignLessonResponseSchema>
+export type StartLessonRequest = z.infer<typeof startLessonRequestSchema>
+export type StartLessonResponse = z.infer<typeof startLessonResponseSchema>
 export type ParentSessionsResponse = z.infer<typeof parentSessionsResponseSchema>
 export type ParentSessionDetailResponse = z.infer<typeof parentSessionDetailResponseSchema>
 export type ParentDeviceControlState = z.infer<typeof parentDeviceControlStateSchema>

@@ -1,6 +1,11 @@
 export type {
+  AssignLessonRequest,
+  AssignLessonResponse,
   CosmoState,
+  DeviceLessonAssignment,
+  DeviceLessonState,
   LessonListItem,
+  LessonAssignmentStatus,
   ParentDeviceControlRequest,
   ParentDeviceControlResponse,
   ParentDeviceControlState,
@@ -10,5 +15,7 @@ export type {
   SafeguardLabel,
   SafeguardResult,
   SessionTurnResponse,
+  StartLessonRequest,
+  StartLessonResponse,
   TeachBoxMode,
 } from '@/shared/api'
