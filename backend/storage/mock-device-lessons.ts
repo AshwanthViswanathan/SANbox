@@ -607,6 +607,42 @@ export async function getDeviceLessonState(
   return getMemoryState(deviceId)
 }
 
+export async function claimDeviceForOwner(
+  deviceId: string,
+  ownerUserId: string
+): Promise<DeviceLessonState> {
+  ensurePersistentLessonStorageConfigured('Device claim')
+
+  const persisted = await ensureDeviceRow(deviceId, ownerUserId)
+  if (!persisted?.row) {
+    throw new Error(`Unable to claim device: ${deviceId}`)
+  }
+
+  if (persisted.row.owner_user_id && persisted.row.owner_user_id !== ownerUserId) {
+    throw new Error(`Forbidden device claim for device: ${deviceId}`)
+  }
+
+  const updatedAt = new Date().toISOString()
+  const { error } = await persisted.admin
+    .from('devices')
+    .update({
+      owner_user_id: ownerUserId,
+      last_seen_at: updatedAt,
+    })
+    .eq('id', deviceId)
+
+  if (error) {
+    throw new Error(`Unable to claim device: ${deviceId}`)
+  }
+
+  const refreshed = await fetchDeviceLessonRow(deviceId)
+  if (refreshed?.row) {
+    return stateFromRow(refreshed.row)
+  }
+
+  return makeEmptyState(deviceId, updatedAt)
+}
+
 export async function assignLessonToDevice(
   deviceId: string,
   lessonId: string | null,
