@@ -81,3 +81,47 @@ export async function generateTeachingReply(params: {
     )
   }
 }
+
+export async function generateLessonPauseReply(params: {
+  transcript: string
+  lessonTitle: string
+  stepTitle: string
+  stepPrompt: string
+  teacherNote?: string | null
+}) {
+  const { transcript, lessonTitle, stepTitle, stepPrompt, teacherNote } = params
+
+  try {
+    return await runGroqChatCompletion({
+      model: DEFAULT_LLM_MODEL,
+      temperature: 0.3,
+      maxTokens: 180,
+      purpose: 'lesson pause reply',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are TeachBox, a voice-first AI learning companion for K-5 students. You are inside a scripted lesson. Answer the child’s follow-up question briefly, clearly, and only about the current lesson concept. Do not open a new topic. Do not ask multiple follow-up questions. Do not change the lesson plan. Keep the reply short enough to read aloud comfortably.',
+        },
+        {
+          role: 'system',
+          content: `Current lesson: "${lessonTitle}". Current pause point: "${stepTitle}". Pause prompt: "${stepPrompt}".`,
+        },
+        ...(teacherNote
+          ? [
+              {
+                role: 'system' as const,
+                content: `Teacher note: ${teacherNote}`,
+              },
+            ]
+          : []),
+        {
+          role: 'user',
+          content: transcript,
+        },
+      ],
+    })
+  } catch {
+    return `That is a good question. The main idea here is ${stepPrompt.toLowerCase()}`
+  }
+}

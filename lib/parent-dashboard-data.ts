@@ -283,31 +283,61 @@ async function loadPersistedDevices(ownerUserId: string): Promise<ParentDeviceRo
 
   try {
     const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('devices')
-      .select(selectColumns)
-      .eq('owner_user_id', ownerUserId)
-      .order('name', { ascending: true })
+    const [{ data: ownedData, error: ownedError }, { data: orphanData, error: orphanError }] =
+      await Promise.all([
+        admin
+          .from('devices')
+          .select(selectColumns)
+          .eq('owner_user_id', ownerUserId)
+          .order('name', { ascending: true }),
+        admin
+          .from('devices')
+          .select(selectColumns)
+          .is('owner_user_id', null)
+          .order('last_seen_at', { ascending: false })
+          .limit(10),
+      ])
 
-    if (!error) {
-      return (data ?? []) as ParentDeviceRow[]
+    if (!ownedError && !orphanError) {
+      return dedupeDevices([
+        ...((ownedData ?? []) as ParentDeviceRow[]),
+        ...((orphanData ?? []) as ParentDeviceRow[]),
+      ])
     }
   } catch {
     // Fall through to the authenticated client.
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('devices')
-    .select(selectColumns)
-    .eq('owner_user_id', ownerUserId)
-    .order('name', { ascending: true })
+  const [{ data: ownedData, error: ownedError }, { data: orphanData, error: orphanError }] =
+    await Promise.all([
+      supabase
+        .from('devices')
+        .select(selectColumns)
+        .eq('owner_user_id', ownerUserId)
+        .order('name', { ascending: true }),
+      supabase
+        .from('devices')
+        .select(selectColumns)
+        .is('owner_user_id', null)
+        .order('last_seen_at', { ascending: false })
+        .limit(10),
+    ])
 
-  if (error) {
+  if (ownedError || orphanError) {
     return []
   }
 
-  return (data ?? []) as ParentDeviceRow[]
+  return dedupeDevices([
+    ...((ownedData ?? []) as ParentDeviceRow[]),
+    ...((orphanData ?? []) as ParentDeviceRow[]),
+  ])
+}
+
+function dedupeDevices(devices: ParentDeviceRow[]) {
+  return [...new Map(devices.map((device) => [device.id, device])).values()].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  )
 }
 
 function getDeviceStatus(lastSeenAt: string | null): DeviceStatus {

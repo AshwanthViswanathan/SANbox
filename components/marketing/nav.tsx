@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Menu, Shell, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
+import Image from 'next/image'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -19,9 +20,7 @@ export function MarketingNav() {
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/68 px-4 shadow-[0_16px_40px_-24px_rgba(0,95,153,0.4)] backdrop-blur-xl sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/12 text-primary">
-            <Shell className="h-4 w-4" />
-          </span>
+          <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={36} height={36} className="object-contain" />
           <div className="flex flex-col">
             <span className="font-beach-display text-lg leading-none">SANbox</span>
             <span className="hidden text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground sm:block">

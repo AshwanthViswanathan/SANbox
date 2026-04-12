@@ -3,25 +3,60 @@ lesson_id: ocean-habitats
 title: Ocean Habitats for Young Explorers
 grade_band: 1-3
 topic: science
+estimated_minutes: 6
+version: 1
 ---
 
-## explanation
-The ocean has different habitats where animals live. Some animals live near the shore, some live around coral reefs, and some live in the deep ocean. Each habitat gives animals what they need to survive.
+```teachbox-step
+{
+  "step_id": "intro-1",
+  "type": "narration",
+  "title": "Different ocean homes",
+  "script_chunks": [
+    "The ocean has different habitats where animals live.",
+    "Some animals live near the shore, some live around coral reefs, and some live deep in the ocean."
+  ]
+}
+```
 
-## prompts
-- What animals have you seen that live in the ocean?
-- Why might a fish live near coral instead of deep in the dark ocean?
-- What do animals need in their habitat to stay safe?
+```teachbox-step
+{
+  "step_id": "pause-1",
+  "type": "pause",
+  "title": "Ocean habitat questions",
+  "child_prompt": "Do you have any questions about ocean habitats or where animals live?",
+  "allowed_followups": 2,
+  "resume_line": "Great. Now let’s check whether you can match animals to the right kind of ocean home.",
+  "teacher_note": "Keep answers focused on habitats, food, shelter, and safety."
+}
+```
 
-## checkpoints
-- Student can name at least two ocean habitats
-- Student can explain that different animals live in different places
-- Student can connect habitat to food, shelter, or safety
+```teachbox-step
+{
+  "step_id": "checkpoint-1",
+  "type": "checkpoint_mcq",
+  "title": "Habitat check",
+  "question": "Which place is an ocean habitat?",
+  "choices": {
+    "a": "A coral reef",
+    "b": "A school hallway",
+    "c": "A parking lot",
+    "d": "A kitchen table"
+  },
+  "correct_choice": "a",
+  "correct_response": "Yes. A coral reef is an ocean habitat.",
+  "incorrect_response": "Not quite.",
+  "hint": "Choose the place where ocean animals can live safely.",
+  "retry_limit": 2
+}
+```
 
-## questions
-- What is a habitat?
-- Why do some animals stay close to the shore?
-- What is different about the deep ocean?
-
-## fallback
-If the child needs support, compare ocean habitats to neighborhoods: the beach, a colorful reef, and a dark deep-sea area all feel different and fit different animals.
+```teachbox-step
+{
+  "step_id": "wrap-up",
+  "type": "completion",
+  "title": "Lesson complete",
+  "closing_message": "Nice work. You learned that the ocean has different habitats, and different animals live in different places.",
+  "celebration_line": "You finished the ocean habitat lesson."
+}
+```

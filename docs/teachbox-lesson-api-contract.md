@@ -11,6 +11,8 @@ This contract covers:
 - parent assigns or clears a lesson for a device
 - Pi reads whether a lesson is available
 - Pi starts the assigned lesson for the current session
+- Pi continues scripted lesson chunks
+- Pi submits keyboard checkpoint answers
 - normal lesson turns continue through the existing turn API using `mode: "lesson"`
 
 This contract does not yet define:
@@ -131,6 +133,47 @@ Request body:
 }
 ```
 
+## Pi Continue Flow
+
+When the Pi finishes playing an auto-continue lesson chunk, it asks the backend for the next scripted response.
+
+Recommended route:
+
+- `POST /api/v1/devices/:deviceId/lesson/continue`
+
+Request body:
+
+```json
+{
+  "session_id": "session_abc123"
+}
+```
+
+Response shape:
+
+- same lesson interaction shape as the start response
+
+## Pi Checkpoint Flow
+
+Keyboard-driven multiple-choice checkpoints use a separate route.
+
+Recommended route:
+
+- `POST /api/v1/devices/:deviceId/lesson/checkpoint`
+
+Request body:
+
+```json
+{
+  "session_id": "session_abc123",
+  "choice": "a"
+}
+```
+
+Response shape:
+
+- same lesson interaction shape as the start response
+
 Response shape:
 
 ```json
@@ -177,6 +220,8 @@ Pi-side work can proceed with:
 
 - polling/fetching lesson state
 - `Start Lesson` button
+- continue-chunk calls after narrated audio finishes
+- `A`/`B`/`C`/`D` checkpoint controls
 - switching UI between free chat and lesson mode
 
 Backend can proceed independently with:

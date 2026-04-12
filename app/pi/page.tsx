@@ -2,10 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CosmoFace } from '@/components/pi/cosmo-face'
-import type { CosmoState, SessionTurnResponse } from '@/shared/types'
+import type {
+  CosmoState,
+  DeviceLessonState,
+  LessonInteractionResponse,
+  SessionTurnResponse,
+} from '@/shared/types'
 import { Mic, Activity, AlertCircle, RefreshCw, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { sessionTurnResponseSchema } from '@/shared/api'
+import {
+  deviceLessonStateSchema,
+  lessonInteractionResponseSchema,
+  sessionTurnResponseSchema,
+  startLessonResponseSchema,
+} from '@/shared/api'
 
 const IDLE_TEXT = 'Hold the button and ask a question.'
 const THINKING_TEXT = 'Thinking about that...'
@@ -42,6 +52,33 @@ function getOrCreateStorageId(key: string, prefix: string) {
   const created = makeBrowserId(prefix)
   window.localStorage.setItem(key, created)
   return created
+}
+
+function getOrCreateDemoDeviceId() {
+  const queryDeviceId = new URLSearchParams(window.location.search).get('device_id')?.trim()
+  if (queryDeviceId) {
+    window.localStorage.setItem('teachbox_demo_device_id', queryDeviceId)
+    return queryDeviceId
+  }
+
+  const configured = process.env.NEXT_PUBLIC_PI_DEVICE_ID?.trim()
+  if (configured) {
+    window.localStorage.setItem('teachbox_demo_device_id', configured)
+    return configured
+  }
+
+  const existing = window.localStorage.getItem('teachbox_demo_device_id')
+  if (existing && !isLegacyHostDerivedDeviceId(existing)) {
+    return existing
+  }
+
+  const created = makeBrowserId('webdemo')
+  window.localStorage.setItem('teachbox_demo_device_id', created)
+  return created
+}
+
+function isLegacyHostDerivedDeviceId(deviceId: string) {
+  return /^web-[a-z0-9-]+(?:-\d+)?$/.test(deviceId)
 }
 
 function dataUrlToPlayableSrc(dataUrl: string) {
@@ -304,6 +341,9 @@ export default function PiDisplayPage() {
   const [isSupported, setIsSupported] = useState(true)
   const [autoListenEnabled, setAutoListenEnabled] = useState(true)
   const [isTestingSpeaker, setIsTestingSpeaker] = useState(false)
+  const [isLessonLoading, setIsLessonLoading] = useState(false)
+  const [lessonState, setLessonState] = useState<DeviceLessonState | null>(null)
+  const [lessonInteraction, setLessonInteraction] = useState<LessonInteractionResponse | null>(null)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const deviceIdRef = useRef<string | null>(null)
@@ -328,8 +368,21 @@ export default function PiDisplayPage() {
       return
     }
 
-    deviceIdRef.current = getOrCreateStorageId('teachbox_demo_device_id', 'web')
+    deviceIdRef.current = getOrCreateDemoDeviceId()
     sessionIdRef.current = getOrCreateStorageId('teachbox_demo_session_id', 'session')
+
+    void fetchLessonState(deviceIdRef.current)
+
+    const syncLessonState = () => {
+      if (!deviceIdRef.current || lessonState?.status === 'active') {
+        return
+      }
+
+      void fetchLessonState(deviceIdRef.current)
+    }
+
+    const intervalId = window.setInterval(syncLessonState, 3000)
+    window.addEventListener('focus', syncLessonState)
 
     return () => {
       const recorderState = recorderStateRef.current
@@ -341,8 +394,51 @@ export default function PiDisplayPage() {
       if (autoRestartTimeoutRef.current !== null) {
         window.clearTimeout(autoRestartTimeoutRef.current)
       }
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', syncLessonState)
     }
-  }, [])
+  }, [lessonState?.status])
+
+  useEffect(() => {
+    if (lessonInteraction?.runtime.input_mode !== 'choice') {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      if (key === 'a' || key === 'b' || key === 'c' || key === 'd') {
+        event.preventDefault()
+        void submitCheckpointChoice(key)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [lessonInteraction?.runtime.input_mode])
+
+  useEffect(() => {
+    if (
+      lessonInteraction?.runtime.input_mode !== 'voice' ||
+      lessonState?.status !== 'active' ||
+      isRecording ||
+      isLessonLoading ||
+      isStoppingRef.current
+    ) {
+      return
+    }
+
+    cancelAutoRestart()
+    autoRestartTimeoutRef.current = window.setTimeout(() => {
+      autoRestartTimeoutRef.current = null
+      void startRecording()
+    }, 350)
+
+    return () => {
+      cancelAutoRestart()
+    }
+  }, [isLessonLoading, isRecording, lessonInteraction?.runtime.input_mode, lessonState?.status])
 
   const cancelAutoRestart = () => {
     if (autoRestartTimeoutRef.current !== null) {
@@ -351,8 +447,30 @@ export default function PiDisplayPage() {
     }
   }
 
+  const fetchLessonState = async (deviceId: string) => {
+    try {
+      const response = await fetch(`/api/v1/devices/${deviceId}/lesson`, {
+        cache: 'no-store',
+      })
+
+      if (!response.ok) {
+        return
+      }
+
+      const payload = deviceLessonStateSchema.parse(await response.json())
+      setLessonState(payload)
+
+      if (payload.active_session_id) {
+        sessionIdRef.current = payload.active_session_id
+      }
+    } catch {
+      // Ignore non-critical lesson state bootstrap failures in the Pi demo.
+    }
+  }
+
   const scheduleAutoRestart = () => {
     if (!autoListenEnabled) return
+    if (lessonState?.status === 'active' && !lessonAllowsVoiceInput) return
 
     cancelAutoRestart()
     autoRestartTimeoutRef.current = window.setTimeout(() => {
@@ -384,6 +502,179 @@ export default function PiDisplayPage() {
     setState('idle')
     setTranscript(IDLE_TEXT)
     isStoppingRef.current = false
+  }
+
+  const lessonAllowsVoiceInput = lessonInteraction?.runtime.input_mode === 'voice'
+
+  const handleLessonInteraction = async (result: LessonInteractionResponse) => {
+    setLessonInteraction(result)
+    setLessonState((current) => ({
+      device_id: result.device_id,
+      status: result.status,
+      assigned_lesson: current?.assigned_lesson ?? null,
+      active_session_id: result.session_id,
+      active_lesson_id: result.lesson.lesson_id,
+      current_step_id: result.lesson.step_id,
+      started_at: current?.started_at ?? new Date().toISOString(),
+      completed_at: result.status === 'completed' ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }))
+
+    setAssistantText('')
+    setTranscript(result.runtime.prompt_text)
+    setState(
+      result.runtime.input_mode === 'none'
+        ? 'speaking'
+        : result.runtime.is_complete
+          ? 'idle'
+          : 'idle'
+    )
+
+    try {
+      if (result.audio?.url || result.runtime.prompt_text.trim()) {
+        await playAssistantAudio(result.audio?.url ?? null, result.runtime.prompt_text, activeAudioRef)
+      }
+    } finally {
+      activeAudioRef.current = null
+    }
+
+    if (result.runtime.is_complete) {
+      setState('idle')
+      setTranscript('Lesson complete.')
+      setAssistantText(result.runtime.prompt_text)
+      await fetchLessonState(result.device_id)
+      return
+    }
+
+    if (result.runtime.should_auto_continue) {
+      await continueLesson(result.session_id)
+      return
+    }
+
+    setState('idle')
+    setTranscript(result.runtime.prompt_text)
+    setAssistantText(
+      result.runtime.input_mode === 'choice'
+        ? 'Answer with A, B, C, or D.'
+        : result.runtime.input_mode === 'voice'
+          ? 'Ask your question when you are ready.'
+          : ''
+    )
+
+  }
+
+  const startLesson = async () => {
+    if (!deviceIdRef.current || !sessionIdRef.current || isLessonLoading) return
+
+    setIsLessonLoading(true)
+    cancelAutoRestart()
+
+    try {
+      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionIdRef.current,
+        }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | LessonInteractionResponse
+        | null
+
+      if (!response.ok) {
+        throw new Error(payload && 'error' in payload ? payload.error : 'Unable to start lesson.')
+      }
+
+      const parsed = startLessonResponseSchema.parse(payload)
+      setIsLessonLoading(false)
+      await handleLessonInteraction(parsed)
+    } catch (error) {
+      setState('error')
+      setTranscript(error instanceof Error ? error.message : 'Unable to start lesson.')
+    } finally {
+      setIsLessonLoading(false)
+    }
+  }
+
+  const continueLesson = async (sessionId = sessionIdRef.current) => {
+    if (!deviceIdRef.current || !sessionId || isLessonLoading) return
+
+    setIsLessonLoading(true)
+
+    try {
+      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/continue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+        }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | LessonInteractionResponse
+        | null
+
+      if (!response.ok) {
+        throw new Error(payload && 'error' in payload ? payload.error : 'Unable to continue lesson.')
+      }
+
+      const parsed = lessonInteractionResponseSchema.parse(payload)
+      setIsLessonLoading(false)
+      await handleLessonInteraction(parsed)
+    } catch (error) {
+      setState('error')
+      setTranscript(error instanceof Error ? error.message : 'Unable to continue lesson.')
+    } finally {
+      setIsLessonLoading(false)
+    }
+  }
+
+  const submitCheckpointChoice = async (choice: 'a' | 'b' | 'c' | 'd') => {
+    if (!deviceIdRef.current || !sessionIdRef.current || isLessonLoading) return
+
+    setIsLessonLoading(true)
+
+    try {
+      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/checkpoint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionIdRef.current,
+          choice,
+        }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | LessonInteractionResponse
+        | null
+
+      if (!response.ok) {
+        throw new Error(
+          payload && 'error' in payload ? payload.error : 'Unable to submit checkpoint answer.'
+        )
+      }
+
+      const parsed = lessonInteractionResponseSchema.parse(payload)
+      setIsLessonLoading(false)
+      await handleLessonInteraction(parsed)
+    } catch (error) {
+      setState('error')
+      setTranscript(
+        error instanceof Error ? error.message : 'Unable to submit checkpoint answer.'
+      )
+    } finally {
+      setIsLessonLoading(false)
+    }
   }
 
   const testSpeaker = async () => {
@@ -461,6 +752,17 @@ export default function PiDisplayPage() {
       const samples = mergeFloat32Chunks(recorderState.chunks)
       const elapsedMs = Date.now() - recorderState.startedAt
 
+      if (
+        reason === 'auto' &&
+        lessonState?.status === 'active' &&
+        lessonAllowsVoiceInput &&
+        !recorderState.speechDetected &&
+        sessionIdRef.current
+      ) {
+        await continueLesson(sessionIdRef.current)
+        return
+      }
+
       if (!samples.length) {
         if (elapsedMs < 400) {
           throw new Error('Hold the button a little longer before releasing.')
@@ -475,7 +777,13 @@ export default function PiDisplayPage() {
       formData.set('audio', audioFile)
       formData.set('device_id', deviceIdRef.current ?? makeBrowserId('web'))
       formData.set('session_id', sessionIdRef.current ?? makeBrowserId('session'))
-      formData.set('mode', 'free_chat')
+      formData.set(
+        'mode',
+        lessonState?.status === 'active' && lessonAllowsVoiceInput ? 'lesson' : 'free_chat'
+      )
+      if (lessonInteraction?.lesson.lesson_id) {
+        formData.set('lesson_id', lessonInteraction.lesson.lesson_id)
+      }
 
       const response = await fetch('/api/v1/demo/turn', {
         method: 'POST',
@@ -498,6 +806,17 @@ export default function PiDisplayPage() {
       setAssistantText(result.assistant.text)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
       const serverTtsError = result.debug?.tts_error ?? null
+      if (result.lesson_runtime) {
+        setLessonInteraction((current) =>
+          current
+            ? {
+                ...current,
+                lesson: result.lesson ?? current.lesson,
+                runtime: result.lesson_runtime,
+              }
+            : current
+        )
+      }
 
       try {
         await playAssistantAudio(
@@ -506,8 +825,26 @@ export default function PiDisplayPage() {
           activeAudioRef
         )
         setState('idle')
+        if (result.lesson_runtime?.should_auto_continue && sessionIdRef.current) {
+          await continueLesson(sessionIdRef.current)
+          return
+        }
+
+        if (result.lesson_runtime?.input_mode === 'voice') {
+          setTranscript(
+            result.lesson_runtime.followups_remaining === 1
+              ? 'Ask one more question about this part if you want.'
+              : 'Ask a question about this part.'
+          )
+          setAssistantText('')
+          return
+        }
+
         setTranscript(IDLE_TEXT)
-        if (reason === 'auto' || autoListenEnabled) {
+        if (
+          (reason === 'auto' || autoListenEnabled) &&
+          (!lessonState || lessonState.status !== 'active')
+        ) {
           scheduleAutoRestart()
         }
         return
@@ -533,7 +870,15 @@ export default function PiDisplayPage() {
   }
 
   const startRecording = async () => {
-    if (!isSupported || isRecording || isStoppingRef.current) return
+    if (
+      !isSupported ||
+      isRecording ||
+      isStoppingRef.current ||
+      lessonState?.status === 'assigned' ||
+      (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
+    ) {
+      return
+    }
 
     try {
       cancelAutoRestart()
@@ -639,9 +984,9 @@ export default function PiDisplayPage() {
               <span>{state}</span>
             </div>
             <div className="flex items-center gap-2">
-              {state === 'speaking' && (
+              {lessonState?.status && lessonState.status !== 'none' && (
                 <span className="px-2 py-1 rounded bg-accent/20 text-accent text-xs font-bold tracking-wider">
-                  LESSON MODE
+                  {lessonState.status === 'assigned' ? 'LESSON READY' : 'LESSON MODE'}
                 </span>
               )}
               <span className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -665,6 +1010,20 @@ export default function PiDisplayPage() {
                   {assistantText}
                 </p>
               ) : null}
+              {lessonInteraction ? (
+                <p className="text-xs font-mono text-muted-foreground">
+                  {lessonInteraction.lesson.title} • {lessonInteraction.runtime.step_type}
+                </p>
+              ) : lessonState?.assigned_lesson ? (
+                <p className="text-xs font-mono text-muted-foreground">
+                  Assigned lesson: {lessonState.assigned_lesson.title}
+                </p>
+              ) : null}
+              {deviceIdRef.current ? (
+                <p className="text-xs font-mono text-muted-foreground">
+                  Device ID: {deviceIdRef.current}
+                </p>
+              ) : null}
               {debugTimings ? (
                 <p className="text-xs font-mono text-muted-foreground">
                   {Object.entries(debugTimings)
@@ -678,7 +1037,14 @@ export default function PiDisplayPage() {
               <button
                 type="button"
                 onClick={toggleRecording}
-                disabled={!isSupported || isStoppingRef.current || isTestingSpeaker}
+                disabled={
+                  !isSupported ||
+                  isStoppingRef.current ||
+                  isTestingSpeaker ||
+                  lessonState?.status === 'assigned' ||
+                  (lessonState?.status === 'active' && !lessonAllowsVoiceInput) ||
+                  isLessonLoading
+                }
                 className={cn(
                   'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
                   isRecording
@@ -695,15 +1061,31 @@ export default function PiDisplayPage() {
               <p className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
                 {isRecording
                   ? 'Tap to stop'
-                  : autoListenEnabled
-                    ? 'Tap to start loop'
-                    : 'Tap to talk'}
+                  : lessonState?.status === 'assigned'
+                    ? 'Start the assigned lesson'
+                    : lessonInteraction?.runtime.input_mode === 'choice'
+                      ? 'Use A, B, C, or D'
+                      : lessonState?.status === 'active' && !lessonAllowsVoiceInput
+                        ? 'Lesson is guiding the next step'
+                        : autoListenEnabled
+                          ? 'Tap to start loop'
+                          : 'Tap to talk'}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
+                {lessonState?.status === 'assigned' && (
+                  <button
+                    type="button"
+                    onClick={() => void startLesson()}
+                    disabled={isLessonLoading || isRecording || isTestingSpeaker}
+                    className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={stopConversation}
-                  disabled={isTestingSpeaker}
+                  disabled={isTestingSpeaker || isLessonLoading}
                   className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Stop Conversation
@@ -711,7 +1093,13 @@ export default function PiDisplayPage() {
                 <button
                   type="button"
                   onClick={() => void testSpeaker()}
-                  disabled={!isSupported || isRecording || isStoppingRef.current || isTestingSpeaker}
+                  disabled={
+                    !isSupported ||
+                    isRecording ||
+                    isStoppingRef.current ||
+                    isTestingSpeaker ||
+                    isLessonLoading
+                  }
                   className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
@@ -721,9 +1109,14 @@ export default function PiDisplayPage() {
                   onMouseDown={() => void startRecording()}
                   onMouseUp={() => void stopRecorderAndSend('manual')}
                   onMouseLeave={() => void stopRecorderAndSend('manual')}
-                  onTouchStart={() => void startRecording()}
-                  onTouchEnd={() => void stopRecorderAndSend('manual')}
-                  disabled={isTestingSpeaker}
+                    onTouchStart={() => void startRecording()}
+                    onTouchEnd={() => void stopRecorderAndSend('manual')}
+                  disabled={
+                    isTestingSpeaker ||
+                    isLessonLoading ||
+                    lessonState?.status === 'assigned' ||
+                    (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
+                  }
                   className={cn(
                     'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                     'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -738,10 +1131,12 @@ export default function PiDisplayPage() {
                     window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
                     setAssistantText('')
                     setDebugTimings(null)
+                    setLessonInteraction(null)
+                    void fetchLessonState(deviceIdRef.current ?? 'web')
                     setState('idle')
                     setTranscript(IDLE_TEXT)
                   }}
-                  disabled={isTestingSpeaker}
+                  disabled={isTestingSpeaker || isLessonLoading}
                   className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   New Session
@@ -755,7 +1150,7 @@ export default function PiDisplayPage() {
                       cancelAutoRestart()
                     }
                   }}
-                  disabled={isTestingSpeaker}
+                  disabled={isTestingSpeaker || isLessonLoading || lessonState?.status === 'active'}
                   className={cn(
                     'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                     autoListenEnabled
@@ -766,6 +1161,22 @@ export default function PiDisplayPage() {
                   {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
                 </button>
               </div>
+              {lessonInteraction?.runtime.input_mode === 'choice' && lessonInteraction.runtime.choices ? (
+                <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                  {(['a', 'b', 'c', 'd'] as const).map((choiceKey) => (
+                    <button
+                      key={choiceKey}
+                      type="button"
+                      onClick={() => void submitCheckpointChoice(choiceKey)}
+                      disabled={isLessonLoading}
+                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-foreground hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="mr-2 font-mono uppercase">{choiceKey}.</span>
+                      {lessonInteraction.runtime.choices?.[choiceKey]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

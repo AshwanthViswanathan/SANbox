@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 const navItems = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -34,7 +35,7 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
       <div className="mb-8 px-4">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-full coastal-gradient text-white shadow-lg shadow-primary/20">
-            <Anchor className="h-5 w-5" />
+            <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={32} height={32} className="object-contain" />
           </span>
           <div>
             <div className="stitch-heading text-xl text-primary">SANbox Explorer</div>

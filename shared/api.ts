@@ -22,6 +22,35 @@ export const lessonPointerSchema = z.object({
   title: z.string(),
 })
 
+export const lessonStepTypeSchema = z.enum([
+  'narration',
+  'pause',
+  'checkpoint_mcq',
+  'completion',
+])
+
+export const lessonInputModeSchema = z.enum(['none', 'voice', 'choice'])
+
+export const lessonChoiceSchema = z.object({
+  a: z.string(),
+  b: z.string(),
+  c: z.string(),
+  d: z.string(),
+})
+
+export const lessonRuntimeSchema = z.object({
+  step_type: lessonStepTypeSchema,
+  input_mode: lessonInputModeSchema,
+  prompt_text: z.string(),
+  choices: lessonChoiceSchema.nullable().optional(),
+  followups_remaining: z.number().int().nonnegative().nullable().optional(),
+  attempts_remaining: z.number().int().nonnegative().nullable().optional(),
+  chunk_index: z.number().int().positive().nullable().optional(),
+  chunk_total: z.number().int().positive().nullable().optional(),
+  should_auto_continue: z.boolean().default(false),
+  is_complete: z.boolean().default(false),
+})
+
 export const sessionTurnResponseSchema = z.object({
   turn_id: z.string(),
   session_id: z.string(),
@@ -37,6 +66,7 @@ export const sessionTurnResponseSchema = z.object({
   output_safeguard: safeguardResultSchema.nullable(),
   audio: audioDescriptorSchema.nullable(),
   lesson: lessonPointerSchema.nullable().optional(),
+  lesson_runtime: lessonRuntimeSchema.nullable().optional(),
   debug: z
     .object({
       timings_ms: z.record(z.string(), z.number()),
@@ -99,9 +129,29 @@ export const startLessonResponseSchema = z.object({
   session_id: z.string(),
   mode: z.literal('lesson'),
   lesson: lessonPointerSchema,
-  prompt_text: z.string(),
   status: lessonAssignmentStatusSchema,
-  started_at: z.string(),
+  started_at: z.string().nullable().optional(),
+  audio: audioDescriptorSchema.nullable(),
+  runtime: lessonRuntimeSchema,
+})
+
+export const continueLessonRequestSchema = z.object({
+  session_id: z.string(),
+})
+
+export const checkpointLessonRequestSchema = z.object({
+  session_id: z.string(),
+  choice: z.enum(['a', 'b', 'c', 'd']),
+})
+
+export const lessonInteractionResponseSchema = z.object({
+  device_id: z.string(),
+  session_id: z.string(),
+  mode: z.literal('lesson'),
+  lesson: lessonPointerSchema,
+  status: lessonAssignmentStatusSchema,
+  audio: audioDescriptorSchema.nullable(),
+  runtime: lessonRuntimeSchema,
 })
 
 export const parentSessionSummarySchema = z.object({
@@ -158,6 +208,10 @@ export type CosmoState = z.infer<typeof cosmoStateSchema>
 export type TeachBoxMode = z.infer<typeof teachBoxModeSchema>
 export type SafeguardLabel = z.infer<typeof safeguardLabelSchema>
 export type SafeguardResult = z.infer<typeof safeguardResultSchema>
+export type LessonStepType = z.infer<typeof lessonStepTypeSchema>
+export type LessonInputMode = z.infer<typeof lessonInputModeSchema>
+export type LessonChoiceMap = z.infer<typeof lessonChoiceSchema>
+export type LessonRuntime = z.infer<typeof lessonRuntimeSchema>
 export type SessionTurnResponse = z.infer<typeof sessionTurnResponseSchema>
 export type LessonListItem = z.infer<typeof lessonListItemSchema>
 export type LessonsResponse = z.infer<typeof lessonsResponseSchema>
@@ -168,6 +222,9 @@ export type AssignLessonRequest = z.infer<typeof assignLessonRequestSchema>
 export type AssignLessonResponse = z.infer<typeof assignLessonResponseSchema>
 export type StartLessonRequest = z.infer<typeof startLessonRequestSchema>
 export type StartLessonResponse = z.infer<typeof startLessonResponseSchema>
+export type ContinueLessonRequest = z.infer<typeof continueLessonRequestSchema>
+export type CheckpointLessonRequest = z.infer<typeof checkpointLessonRequestSchema>
+export type LessonInteractionResponse = z.infer<typeof lessonInteractionResponseSchema>
 export type ParentSessionsResponse = z.infer<typeof parentSessionsResponseSchema>
 export type ParentSessionDetailResponse = z.infer<typeof parentSessionDetailResponseSchema>
 export type ParentDeviceControlState = z.infer<typeof parentDeviceControlStateSchema>

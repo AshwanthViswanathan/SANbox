@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Anchor } from 'lucide-react'
+import Image from 'next/image'
 
 import { GoogleAuthButton } from '@/components/auth/google-auth-button'
 
@@ -11,9 +11,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex justify-center">
           <Link href="/" className="flex items-center gap-3 font-semibold text-foreground">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full coastal-gradient text-white shadow-lg shadow-primary/20">
-              <Anchor className="w-5 h-5" />
-            </span>
+            <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={44} height={44} className="object-contain" />
             <span className="font-beach-display text-2xl">SANbox</span>
           </Link>
         </div>
