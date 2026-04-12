@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CosmoFace } from '@/components/pi/cosmo-face'
+import { GoogleAuthButton } from '@/components/auth/google-auth-button'
+import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type {
   CosmoState,
   DeviceLessonState,
@@ -352,6 +354,7 @@ export default function PiDisplayPage() {
   const [lessonInteraction, setLessonInteraction] = useState<LessonInteractionResponse | null>(null)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
   const [copiedState, setCopiedState] = useState<'device_id' | 'device_link' | null>(null)
+  const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
@@ -378,9 +381,12 @@ export default function PiDisplayPage() {
     deviceIdRef.current = getOrCreateDemoDeviceId()
     sessionIdRef.current = getOrCreateStorageId('teachbox_demo_session_id', 'session')
 
+    void refreshLinkedAccount()
     void fetchLessonState(deviceIdRef.current)
 
     const syncLessonState = () => {
+      void refreshLinkedAccount()
+
       if (!deviceIdRef.current || lessonState?.status === 'active') {
         return
       }
@@ -405,6 +411,19 @@ export default function PiDisplayPage() {
       window.removeEventListener('focus', syncLessonState)
     }
   }, [lessonState?.status])
+
+  async function refreshLinkedAccount() {
+    try {
+      const supabase = createSupabaseClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      setLinkedAccountEmail(user?.email ?? null)
+    } catch {
+      setLinkedAccountEmail(null)
+    }
+  }
 
   useEffect(() => {
     if (lessonInteraction?.runtime.input_mode !== 'choice') {
@@ -1045,6 +1064,10 @@ export default function PiDisplayPage() {
     await startRecording()
   }
 
+  const piLoginPath = deviceIdRef.current
+    ? `/pi?device_id=${encodeURIComponent(deviceIdRef.current)}`
+    : '/pi'
+
   return (
     <div
       className={cn(
@@ -1106,6 +1129,11 @@ export default function PiDisplayPage() {
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     Ask the parent dashboard to assign lessons to this exact device ID.
                   </p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {linkedAccountEmail
+                      ? `Linked account: ${linkedAccountEmail}`
+                      : 'Not linked to a signed-in SANbox account yet.'}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -1124,6 +1152,15 @@ export default function PiDisplayPage() {
                       {copiedState === 'device_link' ? 'Copied Link' : 'Copy Reopen Link'}
                     </button>
                   </div>
+                  {!linkedAccountEmail ? (
+                    <div className="mt-4">
+                      <GoogleAuthButton
+                        mode="login"
+                        nextPath={piLoginPath}
+                        className="w-full gap-2"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {debugTimings ? (

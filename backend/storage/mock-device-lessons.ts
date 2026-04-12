@@ -823,6 +823,11 @@ export async function resetActiveLesson(deviceId: string) {
   return nextState
 }
 
+export function clearDeviceLessonState(deviceId: string) {
+  deviceLessonStore.delete(deviceId)
+  lessonRunStore.delete(deviceId)
+}
+
 export async function continueActiveLesson(
   deviceId: string,
   sessionId: string

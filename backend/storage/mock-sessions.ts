@@ -93,20 +93,9 @@ export async function buildSessionSummary(
     deviceSessions = (data ?? []) as SessionSummaryRow[]
   }
 
-  const { data: orphanSessions, error: orphanSessionsError } = await reader
-    .from('sessions')
-    .select('id, device_id, started_at, last_turn_at, mode, turn_count, flagged_count')
-    .is('owner_user_id', null)
-    .order('last_turn_at', { ascending: false })
-
-  if (orphanSessionsError) {
-    throw new Error(`Failed to load orphan session summaries: ${orphanSessionsError.message}`)
-  }
-
   const sessions = dedupeSessions([
     ...((directSessions ?? []) as SessionSummaryRow[]),
     ...deviceSessions,
-    ...((orphanSessions ?? []) as SessionSummaryRow[]),
   ])
   const flaggedCountsBySession = await loadFlaggedCountsBySession(
     reader,
@@ -253,7 +242,7 @@ async function canAccessSession(
     return true
   }
 
-  return session.owner_user_id === null && device?.owner_user_id === null
+  return false
 }
 
 async function loadFlaggedCountsBySession(

@@ -9,9 +9,11 @@ import { createClient } from '@/lib/supabase/client'
 
 type GoogleAuthButtonProps = {
   mode: 'login' | 'signup'
+  nextPath?: string
+  className?: string
 }
 
-export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ mode, nextPath = '/dashboard', className }: GoogleAuthButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -22,7 +24,7 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
       setLoading(true)
 
       const supabase = createClient()
-      const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -44,7 +46,12 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
 
   return (
     <div className="space-y-3">
-      <Button type="button" className="w-full gap-2" onClick={handleGoogleAuth} disabled={loading}>
+      <Button
+        type="button"
+        className={className ?? 'w-full gap-2'}
+        onClick={handleGoogleAuth}
+        disabled={loading}
+      >
         {loading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (

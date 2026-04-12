@@ -57,6 +57,10 @@ export function setDeviceControl(
   }
 }
 
+export function clearDeviceControl(deviceId: string) {
+  deviceControlStore.delete(deviceId)
+}
+
 function buildDefaultDeviceControl(deviceId: string): ParentDeviceControlState {
   const knownDevice = MOCK_DEVICES.find((device) => device.id === deviceId)
   if (!knownDevice) {

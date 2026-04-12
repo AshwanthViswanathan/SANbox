@@ -287,55 +287,31 @@ async function loadPersistedDevices(ownerUserId: string): Promise<ParentDeviceRo
 
   try {
     const admin = createAdminClient()
-    const [{ data: ownedData, error: ownedError }, { data: orphanData, error: orphanError }] =
-      await Promise.all([
-        admin
-          .from('devices')
-          .select(selectColumns)
-          .eq('owner_user_id', ownerUserId)
-          .order('name', { ascending: true }),
-        admin
-          .from('devices')
-          .select(selectColumns)
-          .is('owner_user_id', null)
-          .order('last_seen_at', { ascending: false })
-          .limit(10),
-      ])
+    const { data, error } = await admin
+      .from('devices')
+      .select(selectColumns)
+      .eq('owner_user_id', ownerUserId)
+      .order('name', { ascending: true })
 
-    if (!ownedError && !orphanError) {
-      return dedupeDevices([
-        ...((ownedData ?? []) as ParentDeviceRow[]),
-        ...((orphanData ?? []) as ParentDeviceRow[]),
-      ])
+    if (!error) {
+      return dedupeDevices((data ?? []) as ParentDeviceRow[])
     }
   } catch {
     // Fall through to the authenticated client.
   }
 
   const supabase = await createClient()
-  const [{ data: ownedData, error: ownedError }, { data: orphanData, error: orphanError }] =
-    await Promise.all([
-      supabase
-        .from('devices')
-        .select(selectColumns)
-        .eq('owner_user_id', ownerUserId)
-        .order('name', { ascending: true }),
-      supabase
-        .from('devices')
-        .select(selectColumns)
-        .is('owner_user_id', null)
-        .order('last_seen_at', { ascending: false })
-        .limit(10),
-    ])
+  const { data, error } = await supabase
+    .from('devices')
+    .select(selectColumns)
+    .eq('owner_user_id', ownerUserId)
+    .order('name', { ascending: true })
 
-  if (ownedError || orphanError) {
+  if (error) {
     return []
   }
 
-  return dedupeDevices([
-    ...((ownedData ?? []) as ParentDeviceRow[]),
-    ...((orphanData ?? []) as ParentDeviceRow[]),
-  ])
+  return dedupeDevices((data ?? []) as ParentDeviceRow[])
 }
 
 function dedupeDevices(devices: ParentDeviceRow[]) {

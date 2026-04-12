@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { startTransition, useEffect, useState } from 'react'
 import {
   Mic,
   MicOff,
@@ -8,9 +8,11 @@ import {
   PlayCircle,
   Power,
   PowerOff,
+  Trash2,
   Volume2,
   VolumeX,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -36,9 +38,11 @@ export function DeviceCommandPanel({
   deviceName,
   isOnline,
 }: DeviceCommandPanelProps) {
+  const router = useRouter()
   const [controlState, setControlState] = useState<ParentDeviceControlState>(DEFAULT_STATE)
   const [ready, setReady] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -106,11 +110,43 @@ export function DeviceCommandPanel({
     }
   }
 
+  async function deleteDevice() {
+    const confirmed = window.confirm(
+      `Delete ${deviceName}? This will remove the device and its recorded sessions from the dashboard.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/v1/parent/devices/${deviceId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? 'Failed to delete device')
+      }
+
+      startTransition(() => {
+        router.refresh()
+      })
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to delete device right now.')
+      setDeleting(false)
+      return
+    }
+  }
+
   const paused = controlState.device === 'paused'
   const poweredOff = controlState.device === 'off'
   const microphoneOff = controlState.microphone === 'off'
   const speakerOff = controlState.speaker === 'off'
-  const disabled = !ready || saving
+  const disabled = !ready || saving || deleting
 
   return (
     <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4 sm:col-span-2">
@@ -198,6 +234,19 @@ export function DeviceCommandPanel({
         >
           {speakerOff ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           {speakerOff ? 'Turn speaker on' : 'Turn speaker off'}
+        </Button>
+      </div>
+
+      <div className="mt-4">
+        <Button
+          type="button"
+          variant="destructive"
+          className="w-full"
+          onClick={() => void deleteDevice()}
+          disabled={deleting || saving}
+        >
+          <Trash2 className="h-4 w-4" />
+          {deleting ? 'Deleting device...' : 'Delete device'}
         </Button>
       </div>
 
