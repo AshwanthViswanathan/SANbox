@@ -9,6 +9,14 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
+const MODEL_OPTIONS = [
+  { value: 'openai/gpt-oss-safeguard-20b', label: 'GPT OSS Safeguard 20B' },
+  { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
+  { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B' },
+] as const
+
 function getMessageText(parts: Array<{ type: string; text?: string }>) {
   return parts
     .filter((part) => part.type === 'text' && typeof part.text === 'string')
@@ -20,7 +28,12 @@ function getMessageText(parts: Array<{ type: string; text?: string }>) {
 export function FloatingChat() {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
-  const { messages, sendMessage, status, error } = useChat()
+  const [model, setModel] = useState<(typeof MODEL_OPTIONS)[number]['value']>('openai/gpt-oss-120b')
+  const { messages, sendMessage, status, error } = useChat({
+    body: {
+      model,
+    },
+  })
 
   const isBusy = status === 'submitted' || status === 'streaming'
 
@@ -54,12 +67,31 @@ export function FloatingChat() {
             </Button>
           </div>
 
+          <div className="border-b border-border px-4 py-3">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              Model
+              <select
+                value={model}
+                onChange={(event) =>
+                  setModel(event.target.value as (typeof MODEL_OPTIONS)[number]['value'])
+                }
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none"
+              >
+                {MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <ScrollArea className="h-96 px-4 py-4">
             <div className="space-y-3">
               {messages.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                   Ask about lesson ideas, device behavior, or parent-dashboard flows and this widget will call
-                  Groq through <code className="font-mono">/api/chat</code>.
+                  Groq through <code className="font-mono">/api/chat</code> using the selected model.
                 </div>
               ) : (
                 messages.map((message) => {

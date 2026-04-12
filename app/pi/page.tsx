@@ -149,6 +149,7 @@ export default function PiDisplayPage() {
   const sessionIdRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
   const autoRestartTimeoutRef = useRef<number | null>(null)
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     const supported =
@@ -199,6 +200,31 @@ export default function PiDisplayPage() {
     }, 350)
   }
 
+  const cleanupRecorder = () => {
+    const recorderState = recorderStateRef.current
+
+    recorderState?.processor.disconnect()
+    recorderState?.source.disconnect()
+    recorderState?.silenceGain.disconnect()
+    recorderState?.stream.getTracks().forEach((track) => track.stop())
+    void recorderState?.audioContext.close()
+    recorderStateRef.current = null
+  }
+
+  const stopConversation = () => {
+    cancelAutoRestart()
+    isStoppingRef.current = true
+    activeAudioRef.current?.pause()
+    activeAudioRef.current = null
+    cleanupRecorder()
+    setIsRecording(false)
+    setAssistantText('')
+    setDebugTimings(null)
+    setState('idle')
+    setTranscript(IDLE_TEXT)
+    isStoppingRef.current = false
+  }
+
   const getContainerStyle = () => {
     switch (state) {
       case 'idle':
@@ -244,12 +270,7 @@ export default function PiDisplayPage() {
     setTranscript(THINKING_TEXT)
 
     try {
-      recorderState.processor.disconnect()
-      recorderState.source.disconnect()
-      recorderState.silenceGain.disconnect()
-      recorderState.stream.getTracks().forEach((track) => track.stop())
-      await recorderState.audioContext.close()
-      recorderStateRef.current = null
+      cleanupRecorder()
 
       const samples = mergeFloat32Chunks(recorderState.chunks)
       const elapsedMs = Date.now() - recorderState.startedAt
@@ -291,7 +312,16 @@ export default function PiDisplayPage() {
       setAssistantText(result.assistant.text)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
 
-      await playAssistantAudio(result.audio?.url ?? null, result.assistant.text)
+      const audio = result.audio?.url ? new Audio(dataUrlToPlayableSrc(result.audio.url)) : null
+      activeAudioRef.current = audio
+
+      try {
+        await playAssistantAudio(result.audio?.url ?? null, result.assistant.text)
+      } finally {
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null
+        }
+      }
 
       setState('idle')
       setTranscript(IDLE_TEXT)
@@ -447,11 +477,11 @@ export default function PiDisplayPage() {
           ) : null}
         </div>
 
-        <div className="flex flex-col items-center gap-4">
-          <button
-            type="button"
-            onClick={toggleRecording}
-            disabled={!isSupported || isStoppingRef.current}
+      <div className="flex flex-col items-center gap-4">
+        <button
+          type="button"
+          onClick={toggleRecording}
+          disabled={!isSupported || isStoppingRef.current}
             className={cn(
               'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
               isRecording
@@ -469,6 +499,13 @@ export default function PiDisplayPage() {
             {isRecording ? 'Tap to stop' : autoListenEnabled ? 'Tap to start loop' : 'Tap to talk'}
           </p>
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={stopConversation}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+            >
+              Stop Conversation
+            </button>
             <button
               type="button"
               onMouseDown={() => void startRecording()}

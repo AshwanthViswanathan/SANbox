@@ -1,6 +1,9 @@
 import { loadLessonById } from '@/backend/lessons/load-lessons'
 import { generateTeachingReply } from '@/backend/providers/llm'
-import { classifySafety } from '@/backend/providers/safeguard'
+import {
+  classifySafetyDetailed,
+  type DetailedSafeguardResult,
+} from '@/backend/providers/safeguard'
 import { transcribeAudio } from '@/backend/providers/stt'
 import { synthesizeSpeech } from '@/backend/providers/tts'
 import { logTurn } from '@/backend/storage/mock-sessions'
@@ -18,6 +21,11 @@ type HandleTurnInput = {
   transcriptOverride?: string | null
 }
 
+type TurnLogMetadata = {
+  inputSafeguard: DetailedSafeguardResult | null
+  outputSafeguard: DetailedSafeguardResult | null
+}
+
 export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnResponse> {
   const turnId = makeId('turn')
   const timingsMs: Record<string, number> = {}
@@ -26,7 +34,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   timingsMs.stt = Math.round(performance.now() - sttStartedAt)
 
   const inputSafeguardStartedAt = performance.now()
-  const inputSafeguard = await classifySafety(transcript)
+  const inputSafeguard = await classifySafetyDetailed(transcript)
   timingsMs.input_safeguard = Math.round(performance.now() - inputSafeguardStartedAt)
 
   if (inputSafeguard.label === 'BLOCK') {
@@ -52,7 +60,10 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       mode: input.mode,
       cosmo_state: audio ? 'blocked' : 'error',
       transcript,
-      input_safeguard: inputSafeguard,
+      input_safeguard: {
+        label: inputSafeguard.label,
+        reason: inputSafeguard.reason,
+      },
       assistant: {
         text: blockedFallback,
         blocked: true,
@@ -65,7 +76,10 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       },
     }
 
-    await logTurn(blockedTurn, input.ownerUserId)
+    await logTurn(blockedTurn, input.ownerUserId, {
+      inputSafeguard,
+      outputSafeguard: null,
+    })
     return blockedTurn
   }
 
@@ -75,11 +89,16 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     transcript,
     mode: input.mode,
     lessonTitle: lesson?.meta.title ?? null,
+    inputSafety: {
+      label: inputSafeguard.label,
+      reason: inputSafeguard.reason,
+      category: inputSafeguard.category,
+    },
   })
   timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
   const outputSafeguardStartedAt = performance.now()
-  const outputSafeguard = await classifySafety(assistantText)
+  const outputSafeguard = await classifySafetyDetailed(assistantText)
   timingsMs.output_safeguard = Math.round(performance.now() - outputSafeguardStartedAt)
   const safeAssistantText =
     outputSafeguard.label === 'BLOCK' ? getBlockedFallback() : assistantText
@@ -104,12 +123,18 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     mode: input.mode,
     cosmo_state: outputSafeguard.label === 'BLOCK' ? 'blocked' : audio ? 'speaking' : 'error',
     transcript,
-    input_safeguard: inputSafeguard,
+    input_safeguard: {
+      label: inputSafeguard.label,
+      reason: inputSafeguard.reason,
+    },
     assistant: {
       text: safeAssistantText,
       blocked: outputSafeguard.label === 'BLOCK',
     },
-    output_safeguard: outputSafeguard,
+    output_safeguard: {
+      label: outputSafeguard.label,
+      reason: outputSafeguard.reason,
+    },
     audio,
     lesson:
       input.mode === 'lesson' && lesson
@@ -124,6 +149,9 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     },
   }
 
-  await logTurn(turn, input.ownerUserId)
+  await logTurn(turn, input.ownerUserId, {
+    inputSafeguard,
+    outputSafeguard,
+  })
   return turn
 }

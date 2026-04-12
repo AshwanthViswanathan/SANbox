@@ -1,3 +1,3 @@
 export function getBlockedFallback() {
-  return 'I can help with safe learning questions instead. Want to ask about space, animals, or math?'
+  return "I can't help with that. That language or request is not safe or appropriate. We need to keep this conversation respectful and safe. Ask me about school, science, animals, or math instead."
 }
