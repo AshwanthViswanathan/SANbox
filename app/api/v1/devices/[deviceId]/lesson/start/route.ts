@@ -38,6 +38,8 @@ export async function POST(
         ? 409
         : message.startsWith('Unknown lesson_id:')
           ? 404
+          : message.includes('SUPABASE_SERVICE_ROLE_KEY')
+            ? 503
           : 500
     return NextResponse.json({ error: message }, { status })
   }

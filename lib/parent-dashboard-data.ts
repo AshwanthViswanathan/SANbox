@@ -22,17 +22,20 @@ type ParentDeviceRow = {
   id: string
   name: string
   last_seen_at: string | null
+  platform: string | null
 }
 type ParentDeviceListItem = {
   id: string
   name: string
   lastSeen: string
   last_seen_at: string | null
+  platform: string | null
 }
 
 export type ParentDeviceSnapshot = {
   id: string
   name: string
+  platform: string | null
   status: DeviceStatus
   lastSeen: string
   battery: number
@@ -201,6 +204,7 @@ export async function getDeviceSnapshots(): Promise<ParentDeviceSnapshot[]> {
     return {
       id: device.id,
       name: device.name,
+      platform: device.platform,
       status: getDeviceStatus(device.last_seen_at),
       lastSeen: device.lastSeen,
       battery: health.battery,
@@ -254,34 +258,32 @@ function isFlagged(inputLabel: SafeguardLabel, outputLabel: SafeguardLabel | nul
 }
 
 async function getParentDevices(): Promise<ParentDeviceListItem[]> {
-  const fallbackDevices: ParentDeviceListItem[] = MOCK_DEVICES.map((device) => ({
-    ...device,
-    last_seen_at: null,
-  }))
-
   const userId = await getAuthenticatedUserId()
   if (!userId) {
-    return fallbackDevices
+    return MOCK_DEVICES.map((device) => ({
+      ...device,
+      last_seen_at: null,
+      platform: 'rpi',
+    }))
   }
 
   const rows = await loadPersistedDevices(userId)
   if (rows.length > 0) {
-    const persistedDevices: ParentDeviceListItem[] = rows.map((device) => ({
+    return rows.map((device) => ({
       id: device.id,
       name: device.name,
       lastSeen: formatLastSeen(device.last_seen_at),
       last_seen_at: device.last_seen_at,
+      platform: device.platform,
     }))
-
-    return [...new Map([...fallbackDevices, ...persistedDevices].map((device) => [device.id, device])).values()]
       .sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return fallbackDevices
+  return []
 }
 
 async function loadPersistedDevices(ownerUserId: string): Promise<ParentDeviceRow[]> {
-  const selectColumns = 'id, name, last_seen_at'
+  const selectColumns = 'id, name, last_seen_at, platform'
 
   try {
     const admin = createAdminClient()

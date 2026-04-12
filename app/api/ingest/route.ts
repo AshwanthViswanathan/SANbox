@@ -37,15 +37,20 @@ import { NextRequest, NextResponse } from 'next/server'
  *
  * TODO: Trigger downstream agent logic if event_type === 'alert'
  */
-
-const EXPECTED_TOKEN = process.env.DEVICE_INGEST_TOKEN ?? 'dev-token-change-me'
-
 export async function POST(req: NextRequest) {
+  const expectedToken = process.env.DEVICE_INGEST_TOKEN?.trim()
+  if (!expectedToken) {
+    return NextResponse.json(
+      { error: 'DEVICE_INGEST_TOKEN is not configured.' },
+      { status: 503 }
+    )
+  }
+
   // --- Auth ---
   const authHeader = req.headers.get('authorization') ?? ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
 
-  if (!token || token !== EXPECTED_TOKEN) {
+  if (!token || token !== expectedToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

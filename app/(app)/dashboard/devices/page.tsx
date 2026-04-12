@@ -16,7 +16,7 @@ export default async function DevicesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Device Status"
-        description="Voice devices with simple connection, parent controls, and session visibility for the SANbox demo."
+        description="Voice devices registered by the SANbox demo. Teammates can open /pi in a browser and appear here as their own device."
         badge={`${onlineDevices}/${devices.length} ONLINE`}
       />
 
@@ -33,10 +33,20 @@ export default async function DevicesPage() {
         <p className="stitch-label text-tertiary">Device controls</p>
         <p className="stitch-heading mt-2 text-2xl">Parent pause and power controls</p>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Parents can pause a device, mute hardware, and assign a specific lesson without letting the child
-          choose an arbitrary lesson directly on the Pi.
+          Each browser demo keeps its own device ID. Have teammates open <span className="font-mono">/pi</span>,
+          then assign lessons to the matching device card here.
         </p>
       </div>
+
+      {devices.length === 0 ? (
+        <div className="stitch-card px-6 py-8">
+          <p className="stitch-heading text-2xl">No SANbox devices registered yet</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Open <span className="font-mono">/pi</span> on a teammate device first. As soon as that page loads,
+            the browser demo will register itself here and you can assign a lesson.
+          </p>
+        </div>
+      ) : null}
 
       <div className="space-y-4">
         {devices.map((device) => {
@@ -45,6 +55,7 @@ export default async function DevicesPage() {
           const poweredOff = device.controls.device === 'off'
           const microphoneOff = device.controls.microphone === 'off'
           const speakerOff = device.controls.speaker === 'off'
+          const sourceLabel = getSourceLabel(device.platform)
 
           return (
             <article key={device.id} className="stitch-card overflow-hidden">
@@ -64,6 +75,9 @@ export default async function DevicesPage() {
                       <div>
                         <p className="text-base font-semibold tracking-tight text-foreground">{device.name}</p>
                         <p className="mt-1 text-xs font-mono text-muted-foreground">{device.id}</p>
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                          {sourceLabel}
+                        </p>
                       </div>
                     </div>
 
@@ -259,4 +273,16 @@ function formatDateTime(value: string) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function getSourceLabel(platform: string | null) {
+  if (platform === 'web_pi') {
+    return 'Browser Demo'
+  }
+
+  if (platform === 'rpi') {
+    return 'Raspberry Pi'
+  }
+
+  return 'Device'
 }

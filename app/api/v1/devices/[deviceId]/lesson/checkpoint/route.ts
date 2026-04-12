@@ -33,6 +33,7 @@ export async function POST(
     return NextResponse.json(lessonInteractionResponseSchema.parse(response))
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit checkpoint answer.'
-    return NextResponse.json({ error: message }, { status: 409 })
+    const status = message.includes('SUPABASE_SERVICE_ROLE_KEY') ? 503 : 409
+    return NextResponse.json({ error: message }, { status })
   }
 }

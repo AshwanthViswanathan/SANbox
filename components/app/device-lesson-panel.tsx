@@ -135,6 +135,9 @@ export function DeviceLessonPanel({
             No lesson is assigned to {deviceName} right now.
           </p>
         )}
+        <p className="mt-3 break-all font-mono text-[11px] text-muted-foreground">
+          Assignment target: {deviceId}
+        </p>
       </div>
 
       <div className="mt-4 flex flex-col gap-3 lg:flex-row">

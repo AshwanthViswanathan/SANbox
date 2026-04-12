@@ -44,6 +44,8 @@ export async function PUT(
         ? 404
         : message.startsWith('Forbidden device assignment for device:')
           ? 403
+          : message.includes('SUPABASE_SERVICE_ROLE_KEY')
+            ? 503
           : 500
     return NextResponse.json({ error: message }, { status })
   }

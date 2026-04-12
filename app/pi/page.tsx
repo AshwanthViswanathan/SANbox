@@ -8,7 +8,7 @@ import type {
   LessonInteractionResponse,
   SessionTurnResponse,
 } from '@/shared/types'
-import { Mic, Activity, AlertCircle, RefreshCw, Square } from 'lucide-react'
+import { Mic, Activity, AlertCircle, Copy, Link2, RefreshCw, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceLessonStateSchema,
@@ -17,7 +17,7 @@ import {
   startLessonResponseSchema,
 } from '@/shared/api'
 
-const IDLE_TEXT = 'Hold the button and ask a question.'
+const IDLE_TEXT = 'Click the button and ask San a question!'
 const THINKING_TEXT = 'Thinking about that...'
 const MAX_INITIAL_SILENCE_MS = 5000
 const MAX_POST_SPEECH_SILENCE_MS = 1200
@@ -54,8 +54,6 @@ function getOrCreateStorageId(key: string, prefix: string) {
   return created
 }
 
-const DEFAULT_PI_DEVICE_ID = 'pi_living_room'
-
 function getOrCreateDemoDeviceId() {
   const queryDeviceId = new URLSearchParams(window.location.search).get('device_id')?.trim()
   if (queryDeviceId) {
@@ -69,8 +67,18 @@ function getOrCreateDemoDeviceId() {
     return configured
   }
 
-  window.localStorage.setItem('teachbox_demo_device_id', DEFAULT_PI_DEVICE_ID)
-  return DEFAULT_PI_DEVICE_ID
+  const existing = window.localStorage.getItem('teachbox_demo_device_id')
+  if (existing && !isLegacySharedDemoDeviceId(existing)) {
+    return existing
+  }
+
+  const created = makeBrowserId('webdemo')
+  window.localStorage.setItem('teachbox_demo_device_id', created)
+  return created
+}
+
+function isLegacySharedDemoDeviceId(value: string) {
+  return value === 'pi_living_room' || value === 'pi_bedroom' || /^web-[a-z0-9-]+(?:-\d+)?$/i.test(value)
 }
 
 function dataUrlToPlayableSrc(dataUrl: string) {
@@ -343,6 +351,7 @@ export default function PiDisplayPage() {
   const [lessonState, setLessonState] = useState<DeviceLessonState | null>(null)
   const [lessonInteraction, setLessonInteraction] = useState<LessonInteractionResponse | null>(null)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
+  const [copiedState, setCopiedState] = useState<'device_id' | 'device_link' | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
@@ -445,6 +454,28 @@ export default function PiDisplayPage() {
     }
   }
 
+  const copyDeviceReference = async (kind: 'device_id' | 'device_link') => {
+    const deviceId = deviceIdRef.current
+    if (!deviceId || typeof navigator === 'undefined' || !navigator.clipboard) {
+      return
+    }
+
+    const value =
+      kind === 'device_link'
+        ? `${window.location.origin}/pi?device_id=${encodeURIComponent(deviceId)}`
+        : deviceId
+
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedState(kind)
+      window.setTimeout(() => {
+        setCopiedState((current) => (current === kind ? null : current))
+      }, 1800)
+    } catch {
+      // Ignore clipboard failures on locked-down browsers.
+    }
+  }
+
   const fetchLessonState = async (deviceId: string, applyState = true) => {
     try {
       const response = await fetch(`/api/v1/devices/${deviceId}/lesson`, {
@@ -467,6 +498,24 @@ export default function PiDisplayPage() {
       return payload
     } catch {
       // Ignore non-critical lesson state bootstrap failures in the Pi demo.
+      return null
+    }
+  }
+
+  const resetLessonState = async (deviceId: string) => {
+    try {
+      const response = await fetch(`/api/v1/devices/${deviceId}/lesson/reset`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        return null
+      }
+
+      const payload = deviceLessonStateSchema.parse(await response.json())
+      setLessonState(payload)
+      return payload
+    } catch {
       return null
     }
   }
@@ -1047,9 +1096,35 @@ export default function PiDisplayPage() {
                 </p>
               ) : null}
               {deviceIdRef.current ? (
-                <p className="text-xs font-mono text-muted-foreground">
-                  Device ID: {deviceIdRef.current}
-                </p>
+                <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-left">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    SANbox Device
+                  </p>
+                  <p className="mt-2 break-all font-mono text-xs text-foreground">
+                    {deviceIdRef.current}
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Ask the parent dashboard to assign lessons to this exact device ID.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void copyDeviceReference('device_id')}
+                      className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyDeviceReference('device_link')}
+                      className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      {copiedState === 'device_link' ? 'Copied Link' : 'Copy Reopen Link'}
+                    </button>
+                  </div>
+                </div>
               ) : null}
               {debugTimings ? (
                 <p className="text-xs font-mono text-muted-foreground">
@@ -1068,7 +1143,6 @@ export default function PiDisplayPage() {
                   !isSupported ||
                   isStoppingRef.current ||
                   isTestingSpeaker ||
-                  lessonState?.status === 'assigned' ||
                   (lessonState?.status === 'active' && !lessonAllowsVoiceInput) ||
                   isLessonLoading
                 }
@@ -1089,7 +1163,7 @@ export default function PiDisplayPage() {
                 {isRecording
                   ? 'Tap to stop'
                   : lessonState?.status === 'assigned'
-                    ? 'Start the assigned lesson'
+                    ? 'Tap to talk or start lesson'
                     : lessonInteraction?.runtime.input_mode === 'choice'
                       ? 'Use A, B, C, or D'
                       : lessonState?.status === 'active' && !lessonAllowsVoiceInput
@@ -1141,7 +1215,6 @@ export default function PiDisplayPage() {
                   disabled={
                     isTestingSpeaker ||
                     isLessonLoading ||
-                    lessonState?.status === 'assigned' ||
                     (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
                   }
                   className={cn(
@@ -1153,13 +1226,22 @@ export default function PiDisplayPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    cancelAutoRestart()
+                    cleanupRecorder()
+                    activeAudioRef.current?.pause()
+                    activeAudioRef.current = null
                     sessionIdRef.current = makeBrowserId('session')
                     window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
                     setAssistantText('')
                     setDebugTimings(null)
                     setLessonInteraction(null)
-                    void fetchLessonState(deviceIdRef.current ?? 'web')
+                    setIsRecording(false)
+                    if (deviceIdRef.current && lessonState?.status === 'active') {
+                      await resetLessonState(deviceIdRef.current)
+                    } else if (deviceIdRef.current) {
+                      await fetchLessonState(deviceIdRef.current)
+                    }
                     setState('idle')
                     setTranscript(IDLE_TEXT)
                   }}
@@ -1210,7 +1292,7 @@ export default function PiDisplayPage() {
       </div>
 
       <div className="w-full flex justify-center text-xs text-muted-foreground text-center">
-        Browser demo mic capture requires `https` or `localhost`.
+        Browser demo mic capture requires `https` or `localhost`. Each browser keeps its own SANbox device ID.
       </div>
     </div>
   )

@@ -99,6 +99,20 @@ function tryCreateAdminClient() {
   }
 }
 
+function allowEphemeralLessonStorage() {
+  return process.env.NODE_ENV !== 'production'
+}
+
+function ensurePersistentLessonStorageConfigured(operation: string) {
+  if (tryCreateAdminClient() || allowEphemeralLessonStorage()) {
+    return
+  }
+
+  throw new Error(
+    `${operation} requires SUPABASE_SERVICE_ROLE_KEY in deployed environments.`
+  )
+}
+
 async function synthesizeLessonPrompt(promptText: string, turnId: string) {
   try {
     return await synthesizeSpeech({
@@ -166,14 +180,7 @@ async function ensureDeviceRow(
   }
 
   const mockDevice = MOCK_DEVICES.find((device) => device.id === deviceId)
-  const fallbackName = mockDevice
-    ? mockDevice.name
-    : deviceId
-        .replace(/^web-/, '')
-        .split('-')
-        .filter(Boolean)
-        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-        .join(' ') || deviceId
+  const fallbackName = mockDevice ? mockDevice.name : formatFallbackDeviceName(deviceId)
 
   const { error } = await existing.admin.from('devices').insert({
     id: deviceId,
@@ -196,6 +203,22 @@ async function ensureDeviceRow(
   }
 
   return fetchDeviceLessonRow(deviceId)
+}
+
+function formatFallbackDeviceName(deviceId: string) {
+  if (deviceId.startsWith('webdemo_') || deviceId.startsWith('web-')) {
+    const suffix = deviceId.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase() || 'DEVICE'
+    return `Browser Demo ${suffix}`
+  }
+
+  return (
+    deviceId
+      .replace(/^web-/, '')
+      .split('-')
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ') || deviceId
+  )
 }
 
 async function touchAndClaimDeviceRow(deviceId: string, ownerUserId: string | null) {
@@ -589,6 +612,8 @@ export async function assignLessonToDevice(
   lessonId: string | null,
   assignedByUserId: string | null
 ): Promise<AssignLessonResponse> {
+  ensurePersistentLessonStorageConfigured('Lesson assignment')
+
   const persisted = await ensureDeviceRow(deviceId, assignedByUserId)
   const updatedAt = new Date().toISOString()
 
@@ -713,6 +738,8 @@ export async function startAssignedLesson(
   sessionId: string,
   lessonIdOverride: string | null = null
 ): Promise<StartLessonResponse> {
+  ensurePersistentLessonStorageConfigured('Lesson start')
+
   const persisted = await fetchDeviceLessonRow(deviceId)
   const startedAt = new Date().toISOString()
 
@@ -747,10 +774,61 @@ export async function startAssignedLesson(
   }
 }
 
+export async function resetActiveLesson(deviceId: string) {
+  ensurePersistentLessonStorageConfigured('Lesson reset')
+
+  const persisted = await fetchDeviceLessonRow(deviceId)
+  const assignedLesson =
+    persisted?.row ? await toAssignedLesson(persisted.row) : getMemoryState(deviceId).assigned_lesson
+  const nextStatus: LessonAssignmentStatus = assignedLesson ? 'assigned' : 'none'
+  const updatedAt = new Date().toISOString()
+
+  lessonRunStore.delete(deviceId)
+
+  if (persisted?.row) {
+    const { error } = await persisted.admin
+      .from('devices')
+      .update({
+        lesson_assignment_status: nextStatus,
+        active_session_id: null,
+        current_step_id: null,
+        lesson_started_at: null,
+        lesson_completed_at: null,
+      })
+      .eq('id', deviceId)
+
+    if (error) {
+      throw new Error(`Unable to reset lesson for device: ${deviceId}`)
+    }
+
+    const refreshed = await fetchDeviceLessonRow(deviceId)
+    if (refreshed?.row) {
+      return stateFromRow(refreshed.row)
+    }
+  }
+
+  const nextState: DeviceLessonState = {
+    device_id: deviceId,
+    status: nextStatus,
+    assigned_lesson: assignedLesson ?? null,
+    active_session_id: null,
+    active_lesson_id: null,
+    current_step_id: null,
+    started_at: null,
+    completed_at: null,
+    updated_at: updatedAt,
+  }
+
+  deviceLessonStore.set(deviceId, nextState)
+  return nextState
+}
+
 export async function continueActiveLesson(
   deviceId: string,
   sessionId: string
 ): Promise<LessonInteractionResponse> {
+  ensurePersistentLessonStorageConfigured('Lesson continuation')
+
   let storedRun = await loadStoredLessonRun(deviceId, sessionId)
   if (!storedRun) {
     console.warn(`No stored lesson run found for device ${deviceId}, session ${sessionId}. Attempting recovery...`)
@@ -834,6 +912,8 @@ export async function submitLessonCheckpointChoice(
   sessionId: string,
   choice: 'a' | 'b' | 'c' | 'd'
 ): Promise<LessonInteractionResponse> {
+  ensurePersistentLessonStorageConfigured('Lesson checkpoint submission')
+
   const storedRun = await loadStoredLessonRun(deviceId, sessionId)
   if (!storedRun) {
     throw new Error(`No active lesson session for device: ${deviceId}`)

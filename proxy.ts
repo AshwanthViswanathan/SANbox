@@ -1,8 +1,36 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseEnv } from '@/lib/supabase/config'
+import {
+  DEMO_ACCESS_COOKIE,
+  hasValidDemoAccessToken,
+  isDemoPasswordProtectionEnabled,
+} from '@/lib/security/demo-password'
 
 export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl
+
+  if (isDemoPasswordProtectionEnabled()) {
+    const allowlistedPath =
+      pathname === '/demo-login' ||
+      pathname === '/api/demo-login' ||
+      pathname === '/auth/callback'
+
+    if (!allowlistedPath) {
+      const token = request.cookies.get(DEMO_ACCESS_COOKIE)?.value
+
+      if (!hasValidDemoAccessToken(token)) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Demo password required' }, { status: 401 })
+        }
+
+        const loginUrl = new URL('/demo-login', request.url)
+        loginUrl.searchParams.set('next', `${pathname}${search}`)
+        return NextResponse.redirect(loginUrl)
+      }
+    }
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,

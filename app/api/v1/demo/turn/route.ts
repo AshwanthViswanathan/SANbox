@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(sessionTurnResponseSchema.parse(result))
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'TeachBox demo turn failed.'
+    const message = error instanceof Error ? error.message : 'SANbox demo turn failed.'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

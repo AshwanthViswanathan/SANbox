@@ -1,5 +1,6 @@
 import { groq } from '@ai-sdk/groq'
 import { convertToModelMessages, streamText, type UIMessage } from 'ai'
+import { createClient } from '@/lib/supabase/server'
 
 const DEFAULT_MODEL = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile'
 const ALLOWED_MODELS = [
@@ -12,6 +13,15 @@ const ALLOWED_MODELS = [
 ] as const
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   if (!process.env.GROQ_API_KEY) {
     return new Response('Missing GROQ_API_KEY environment variable.', { status: 500 })
   }
