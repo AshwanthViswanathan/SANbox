@@ -38,7 +38,7 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="hidden md:flex flex-col">
+          <div className="stitch-readable-surface hidden px-4 py-3 md:flex md:flex-col">
             <div className="text-[11px] font-black uppercase tracking-[0.25em] text-tertiary">Monitoring hub</div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
               <Link href="/dashboard" className="hover:text-foreground transition-colors">dashboard</Link>
@@ -50,7 +50,7 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
               )}
             </div>
           </div>
-          <p className="md:hidden text-sm font-semibold">{title}</p>
+          <p className="stitch-readable-surface px-4 py-2 text-sm font-semibold md:hidden">{title}</p>
         </div>
 
         <div className="stitch-panel flex items-center gap-2 px-3 py-2">

@@ -12,7 +12,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, action, className, badge }: PageHeaderProps) {
   return (
     <div className={cn('mb-8 flex items-start justify-between gap-4', className)}>
-      <div>
+      <div className="stitch-readable-surface px-5 py-4 sm:px-6">
         <div className="mb-1 flex items-center gap-3">
           <h1 className="stitch-heading text-3xl sm:text-4xl">{title}</h1>
           {badge && (

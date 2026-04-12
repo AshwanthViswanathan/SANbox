@@ -73,32 +73,32 @@ export default async function DashboardOverview() {
                 priority
                 className="object-cover object-center"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.97),rgba(252,247,225,0.9),rgba(252,247,225,0.46))]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.92),rgba(252,247,225,0.86),rgba(252,247,225,0.68))]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_32%)]" />
             </div>
 
             <div className="space-y-4">
-            <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
-              Monitoring hub
+              <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
+                Monitoring hub
+              </div>
+              <div className="space-y-2">
+                <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
+                  Explore the shoreline of your child's latest sessions.
+                </h2>
+                <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+                  The dashboard stays sessions-first: recent activity, safety review, device health, and
+                  lesson progress are all visible in one calm monitoring surface.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild>
+                  <Link href="/dashboard/sessions">Open sessions</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
-                Explore the shoreline of your child's latest sessions.
-              </h2>
-              <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-                The dashboard stays sessions-first: recent activity, safety review, device health, and
-                lesson progress are all visible in one calm monitoring surface.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
-                <Link href="/dashboard/sessions">Open sessions</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
-              </Button>
-            </div>
-          </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

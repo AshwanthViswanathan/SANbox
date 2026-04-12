@@ -8,14 +8,12 @@ import { Button } from '@/components/ui/button'
 export function Hero() {
   return (
     <section className="relative min-h-[100svh] overflow-hidden px-0 pt-24">
-      <div className="absolute inset-0 stitch-shell" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.72),transparent_34%),linear-gradient(180deg,rgba(255,248,231,0.08),rgba(255,248,231,0.6))]" />
       <div className="wave-grid absolute inset-0 opacity-30" />
       <div className="pointer-events-none absolute -left-24 top-28 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
       <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-primary/16 blur-3xl" />
 
       <div className="relative mx-auto flex min-h-[calc(100svh-6rem)] max-w-7xl items-center px-4 pb-16 sm:px-6">
-        <div className="grid w-full items-end gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid w-full items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="relative isolate py-8 lg:py-14">
             <div className="pointer-events-none absolute inset-x-[-2rem] inset-y-[-1rem] -z-10 overflow-hidden rounded-[2.5rem] opacity-90">
               <Image
@@ -25,7 +23,7 @@ export function Hero() {
                 priority
                 className="object-cover object-center"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.97),rgba(252,247,225,0.88),rgba(252,247,225,0.34))]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.98),rgba(252,247,225,0.92),rgba(252,247,225,0.58))]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_30%)]" />
             </div>
 
@@ -35,11 +33,11 @@ export function Hero() {
             </div>
 
             <p className="font-beach-accent text-lg font-semibold tracking-[0.08em] text-primary">Meet San</p>
-            <h1 className="font-beach-display mt-3 max-w-3xl text-5xl font-bold leading-[0.92] tracking-tight text-balance text-foreground sm:text-6xl md:text-7xl">
+            <h1 className="font-beach-display mt-3 max-w-3xl text-5xl font-bold leading-[0.92] tracking-tight text-balance text-foreground drop-shadow-[0_8px_24px_rgba(252,247,225,0.45)] sm:text-6xl md:text-7xl">
               SANbox gives kids a calm voice guide and parents a clear session trail.
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-7 text-foreground/72 sm:text-lg">
+            <p className="mt-6 max-w-xl text-base leading-7 text-foreground/80 sm:text-lg">
               Ask a question, hear a grounded answer, and keep every lesson turn reviewable. The experience stays playful for children and legible for adults.
             </p>
 
@@ -71,7 +69,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="relative lg:pl-6">
+          <div className="relative self-start lg:pl-6">
             <div className="stitch-panel overflow-hidden p-2">
               <div className="flex items-center justify-between rounded-[1.5rem] bg-white/72 px-5 py-4">
                 <div>
@@ -142,14 +140,14 @@ function DashboardPreview() {
 
         <div className="flex-1 space-y-0.5 rounded-[1.75rem] bg-[rgba(17,24,39,0.78)] p-4 font-mono text-[11px] leading-relaxed">
           {[
-            { t: '10:42:01', msg: 'device/pi-001        -> listening for a shoreline question', c: 'text-sky-300' },
-            { t: '10:42:03', msg: 'cloud/safeguard      <- input marked SAFE', c: 'text-slate-300' },
-            { t: '10:42:04', msg: 'agent/san            -> explaining moon-driven tides', c: 'text-amber-300' },
-            { t: '10:42:06', msg: 'cloud/tts            <- sending answer back to device', c: 'text-emerald-300' },
-            { t: '10:42:07', msg: 'parent/summary       -> session note updated', c: 'text-slate-300' },
+            { t: '10:42:01', msg: 'Sanbox is ready and waiting for your child to ask a question.', c: 'text-sky-300' },
+            { t: '10:42:03', msg: "The question is checked to make sure the conversation stays child-safe.", c: 'text-slate-300' },
+            { t: '10:42:04', msg: 'San gives a clear answer about how ocean tides work.', c: 'text-amber-300' },
+            { t: '10:42:06', msg: 'The answer is spoken back out loud through the device.', c: 'text-emerald-300' },
+            { t: '10:42:07', msg: 'A simple summary is saved so parents can review it later.', c: 'text-slate-300' },
           ].map((line, i) => (
             <div key={i} className="flex gap-3">
-              <span className="shrink-0 text-sidebar-foreground/30">{line.t}</span>
+              <span className="shrink-0 text-sidebar-foreground/70">{line.t}</span>
               <span className={line.c}>{line.msg}</span>
             </div>
           ))}

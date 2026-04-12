@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import Image from 'next/image'
 import { FloatingChat } from '@/components/app/floating-chat'
 import './globals.css'
 
@@ -34,7 +35,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased" suppressHydrationWarning>
+      <body className="relative min-h-screen font-sans antialiased" suppressHydrationWarning>
+        <div aria-hidden="true" className="fixed inset-0 -z-20 overflow-hidden">
+          <Image
+            src="/beach-aerial-view.jpg"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="stitch-shell absolute inset-0 opacity-80 mix-blend-multiply" />
+        </div>
         {children}
         <FloatingChat />
         {process.env.NODE_ENV === 'production' && <Analytics />}
