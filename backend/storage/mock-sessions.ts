@@ -61,6 +61,11 @@ type TurnLogMetadata = {
   outputSafeguard: DetailedSafeguardResult | null
 }
 
+export type RecentSessionTurn = {
+  transcript: string
+  assistantText: string
+}
+
 export async function buildSessionSummary(
   supabase: StorageReader,
   ownerUserId: string
@@ -113,6 +118,55 @@ export async function buildSessionSummary(
       flagged_count: flaggedCountsBySession.get(session.id) ?? session.flagged_count,
     })),
   }
+}
+
+export async function loadRecentSessionTurns(
+  sessionId: string,
+  deviceId: string,
+  limit = 6
+): Promise<RecentSessionTurn[]> {
+  if (limit <= 0) {
+    return []
+  }
+
+  let reader: StorageReader
+  try {
+    reader = createAdminClient()
+  } catch {
+    return []
+  }
+
+  const { data: session, error: sessionError } = await reader
+    .from('sessions')
+    .select('id, device_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  if (sessionError) {
+    throw new Error(`Failed to load session for recent turns: ${sessionError.message}`)
+  }
+
+  if (!session || session.device_id !== deviceId) {
+    return []
+  }
+
+  const { data: turns, error: turnsError } = await reader
+    .from('turns')
+    .select('transcript, assistant_text')
+    .eq('session_id', sessionId)
+    .order('turn_index', { ascending: false })
+    .limit(limit)
+
+  if (turnsError) {
+    throw new Error(`Failed to load recent session turns: ${turnsError.message}`)
+  }
+
+  return ((turns ?? []) as Array<{ transcript: string; assistant_text: string }>)
+    .reverse()
+    .map((turn) => ({
+      transcript: turn.transcript,
+      assistantText: turn.assistant_text,
+    }))
 }
 
 export async function buildSessionDetail(

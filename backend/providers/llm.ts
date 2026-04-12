@@ -2,6 +2,10 @@ import { runGroqChatCompletion } from '@/backend/providers/groq'
 import type { TeachBoxMode } from '@/shared/types'
 
 const DEFAULT_LLM_MODEL = process.env.TEACHBOX_LLM_MODEL ?? 'openai/gpt-oss-120b'
+type RecentConversationTurn = {
+  transcript: string
+  assistantText: string
+}
 
 function getTeachingFallback(
   transcript: string,
@@ -27,13 +31,14 @@ export async function generateTeachingReply(params: {
   transcript: string
   mode: TeachBoxMode
   lessonTitle?: string | null
+  recentTurns?: RecentConversationTurn[]
   inputSafety?: {
     label: 'SAFE' | 'BORDERLINE' | 'BLOCK'
     reason?: string | null
     category?: string | null
   }
 }) {
-  const { transcript, mode, lessonTitle, inputSafety } = params
+  const { transcript, mode, lessonTitle, recentTurns = [], inputSafety } = params
 
   const lessonContext =
     mode === 'lesson' && lessonTitle
@@ -44,6 +49,22 @@ export async function generateTeachingReply(params: {
     inputSafety?.label === 'BORDERLINE'
       ? `The child's message was classified as BORDERLINE for reason "${inputSafety.reason ?? 'unspecified'}"${inputSafety.category ? ` and category "${inputSafety.category}"` : ''}. Do not answer the request normally. Briefly explain why the language or request is not okay, model a better or safer way to ask, and then redirect into a respectful learning direction. Keep the tone firm but teacher-like, not chatty.`
       : 'The child message was classified SAFE. Answer normally.'
+
+  const conversationContext =
+    recentTurns.length > 0
+      ? 'Use the recent conversation to resolve follow-up questions like "that," "it," or "the cycle." Prefer the most recent turns when the topic is ambiguous.'
+      : 'No recent conversation history is available. Treat this as a standalone question.'
+
+  const conversationMessages = recentTurns.flatMap((turn) => [
+    {
+      role: 'user' as const,
+      content: turn.transcript,
+    },
+    {
+      role: 'assistant' as const,
+      content: turn.assistantText,
+    },
+  ])
 
   try {
     return await runGroqChatCompletion({
@@ -65,6 +86,11 @@ export async function generateTeachingReply(params: {
           role: 'system',
           content: safetyContext,
         },
+        {
+          role: 'system',
+          content: conversationContext,
+        },
+        ...conversationMessages,
         {
           role: 'user',
           content: transcript,
