@@ -59,7 +59,7 @@ export function Hero() {
                 { icon: <ShieldAlert className="h-4 w-4" />, label: 'Safe replies with parent review' },
                 { icon: <LifeBuoy className="h-4 w-4" />, label: 'A guided voice companion named San' },
               ].map((item) => (
-                <div key={item.label} className="rounded-[1.5rem] border border-white/55 bg-white/52 px-4 py-4 text-sm text-muted-foreground backdrop-blur-sm">
+                <div key={item.label} className="rounded-[1.5rem] border border-transparent bg-white/52 px-4 py-4 text-sm text-muted-foreground backdrop-blur-sm">
                   <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     {item.icon}
                   </span>
@@ -70,8 +70,8 @@ export function Hero() {
           </div>
 
           <div className="relative self-start lg:pl-6">
-            <div className="stitch-panel overflow-hidden p-2">
-              <div className="flex items-center justify-between rounded-[1.5rem] bg-white/72 px-5 py-4">
+            <div className="stitch-panel overflow-hidden border-transparent p-0">
+              <div className="flex items-center justify-between px-6 py-5">
                 <div>
                   <p className="text-sm font-semibold text-foreground">SANbox family dashboard</p>
                   <p className="text-xs text-muted-foreground">A stitched view of sessions, safeguards, and device health.</p>
@@ -91,29 +91,39 @@ export function Hero() {
 }
 
 function DashboardPreview() {
+  const previewLinks = [
+    { label: 'Beach overview', href: '/dashboard' },
+    { label: 'Sessions', href: '/dashboard/sessions' },
+    { label: 'Lessons', href: '/dashboard/lessons' },
+    { label: 'Devices', href: '/dashboard/devices' },
+    { label: 'Safeguards', href: '/dashboard/sessions?filter=flagged' },
+    { label: 'Settings', href: '/dashboard/settings' },
+  ]
+
   return (
-    <div className="grid min-h-[440px] grid-cols-[200px_1fr] gap-4 bg-[linear-gradient(180deg,rgba(247,241,217,0.54),rgba(241,252,250,0.82))] p-4 text-sidebar-foreground">
-      <div className="stitch-card flex flex-col gap-1 px-3 py-4">
+    <div className="grid min-h-[440px] grid-cols-[200px_1fr] gap-3 bg-[linear-gradient(180deg,rgba(247,241,217,0.54),rgba(241,252,250,0.82))] px-5 pb-5 pt-0 text-sidebar-foreground">
+      <div className="stitch-card flex flex-col gap-1 border-transparent px-3 py-4">
         <div className="mb-2 px-2 py-1.5 text-[11px] font-mono uppercase tracking-widest text-sidebar-foreground/40">
           Family cove
         </div>
-        {['Beach overview', 'Sessions', 'Lessons', 'Devices', 'Safeguards', 'Settings'].map((item, i) => (
-          <div
-            key={item}
+        {previewLinks.map((item, i) => (
+          <Link
+            key={item.label}
+            href={item.href}
             className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${
               i === 0
                 ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
-                : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60'
+                : 'text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
             }`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
-            {item}
-          </div>
+            {item.label}
+          </Link>
         ))}
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="stitch-card flex items-center justify-between px-4 py-4">
+        <div className="stitch-card flex items-center justify-between border-transparent px-4 py-4">
           <div>
             <div className="text-sm font-semibold text-sidebar-foreground">Session history</div>
             <div className="font-mono text-xs text-sidebar-foreground/50">family / sanbox-home</div>
@@ -124,16 +134,23 @@ function DashboardPreview() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'SANboxes', value: '2' },
             { label: 'Lesson dives', value: '14' },
             { label: 'Safe turns', value: '98%' },
             { label: 'Tide checks', value: '1' },
           ].map((stat) => (
-            <div key={stat.label} className="stitch-card rounded-[1.3rem] p-3">
-              <div className="text-xs text-sidebar-foreground/50">{stat.label}</div>
-              <div className="font-mono text-lg font-bold text-sidebar-foreground">{stat.value}</div>
+            <div
+              key={stat.label}
+              className="stitch-card min-w-0 rounded-[1.3rem] border-transparent px-3 py-3.5"
+            >
+              <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-sidebar-foreground/45">
+                {stat.label}
+              </div>
+              <div className="mt-2 font-mono text-xl font-bold leading-none text-sidebar-foreground">
+                {stat.value}
+              </div>
             </div>
           ))}
         </div>

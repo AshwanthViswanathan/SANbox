@@ -1,14 +1,16 @@
-import { Cpu, Mic, Radio, Volume2, Wifi, WifiOff } from 'lucide-react'
+import { Cpu, MessageSquareText, Mic, Radio, Volume2, Wifi, WifiOff } from 'lucide-react'
 
 import { DeviceCommandPanel } from '@/components/app/device-command-panel'
+import { DeviceLessonPanel } from '@/components/app/device-lesson-panel'
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge } from '@/components/app/teachbox-badges'
 import { StatusBadge } from '@/components/app/status-badge'
-import { getDeviceSnapshots } from '@/lib/parent-dashboard-data'
+import { getDeviceSnapshots, getLessons } from '@/lib/parent-dashboard-data'
 
 export default async function DevicesPage() {
-  const devices = await getDeviceSnapshots()
+  const [devices, lessons] = await Promise.all([getDeviceSnapshots(), getLessons()])
   const onlineDevices = devices.filter((device) => device.status === 'online').length
+  const activeControls = devices.filter((device) => device.controls.device === 'active').length
 
   return (
     <div className="space-y-8">
@@ -22,8 +24,8 @@ export default async function DevicesPage() {
         <DeviceStat label="Devices" value={String(devices.length)} />
         <DeviceStat label="Online now" value={String(onlineDevices)} />
         <DeviceStat
-          label="Flagged turns seen"
-          value={String(devices.reduce((sum, device) => sum + device.flaggedTurns, 0))}
+          label="Active controls"
+          value={String(activeControls)}
         />
       </div>
 
@@ -31,20 +33,23 @@ export default async function DevicesPage() {
         <p className="stitch-label text-tertiary">Device controls</p>
         <p className="stitch-heading mt-2 text-2xl">Parent pause and power controls</p>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          This adds a safe shoreline control in the dashboard without changing the existing parent session
-          routes, lessons route, or the child turn endpoint. The control state is local to the parent UI
-          until a dedicated device-command API exists.
+          Parents can pause a device, mute hardware, and assign a specific lesson without letting the child
+          choose an arbitrary lesson directly on the Pi.
         </p>
       </div>
 
       <div className="space-y-4">
         {devices.map((device) => {
           const isOnline = device.status === 'online'
+          const paused = device.controls.device === 'paused'
+          const poweredOff = device.controls.device === 'off'
+          const microphoneOff = device.controls.microphone === 'off'
+          const speakerOff = device.controls.speaker === 'off'
 
           return (
             <article key={device.id} className="stitch-card overflow-hidden">
               <div className="grid gap-4 px-5 py-5 lg:grid-cols-[1fr_1.15fr]">
-                <div className="space-y-4">
+                <div className="flex h-full flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div
@@ -64,13 +69,23 @@ export default async function DevicesPage() {
 
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
-                        isOnline
-                          ? 'bg-emerald-500/10 text-emerald-700'
-                          : 'bg-muted text-muted-foreground'
+                        poweredOff
+                          ? 'bg-destructive/10 text-destructive'
+                          : paused
+                            ? 'bg-amber-500/12 text-amber-700'
+                            : isOnline
+                              ? 'bg-emerald-500/10 text-emerald-700'
+                              : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-                      {isOnline ? 'Online' : 'Offline'}
+                      {poweredOff ? (
+                        <WifiOff className="h-3.5 w-3.5" />
+                      ) : isOnline ? (
+                        <Wifi className="h-3.5 w-3.5" />
+                      ) : (
+                        <WifiOff className="h-3.5 w-3.5" />
+                      )}
+                      {poweredOff ? 'Powered off' : paused ? 'Paused' : isOnline ? 'Active' : 'Offline'}
                     </span>
                   </div>
 
@@ -92,6 +107,49 @@ export default async function DevicesPage() {
                       />
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">Battery reserve {device.battery}%</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Parent controls updated {formatDateTime(device.controlsUpdatedAt)}
+                    </p>
+                  </div>
+
+                  <div className="flex min-h-[18rem] flex-1 flex-col rounded-[1.25rem] border border-border bg-background px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Recent chat</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Latest turns captured for {device.name}.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-primary-container/20 p-2 text-primary">
+                        <MessageSquareText className="h-4 w-4" />
+                      </span>
+                    </div>
+
+                    {device.recentTurns.length === 0 ? (
+                      <div className="mt-4 flex flex-1 items-center justify-center rounded-2xl bg-muted/30 px-4 py-4 text-center text-sm text-muted-foreground">
+                        No chat history has been recorded for this device yet.
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex-1 space-y-3">
+                        {device.recentTurns.map((turn) => (
+                          <div key={turn.turnId} className="rounded-2xl bg-muted/30 px-4 py-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <ModeBadge mode={turn.mode} />
+                              <span className="text-xs text-muted-foreground">
+                                {formatDateTime(turn.createdAt)}
+                              </span>
+                            </div>
+                            <p className="mt-3 text-sm font-medium text-foreground">{turn.transcript}</p>
+                            <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                              {turn.assistantText}
+                            </p>
+                            <p className="mt-3 text-[11px] font-mono text-muted-foreground">
+                              {turn.sessionId}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -103,13 +161,29 @@ export default async function DevicesPage() {
                     deviceName={device.name}
                     isOnline={isOnline}
                   />
+                  <DeviceLessonPanel
+                    deviceId={device.id}
+                    deviceName={device.name}
+                    lessons={lessons}
+                    initialLessonState={device.lessonState}
+                  />
 
                   <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
                     <div className="flex items-center gap-2">
                       <Mic className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-semibold text-foreground">Microphone</p>
                     </div>
-                    <StatusBadge className="mt-3" status={device.microphone === 'ready' ? 'online' : 'warning'} />
+                    <StatusBadge
+                      className="mt-3"
+                      status={microphoneOff ? 'offline' : device.microphone === 'ready' ? 'online' : 'warning'}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {microphoneOff
+                        ? 'Parent control is off.'
+                        : device.microphone === 'ready'
+                          ? 'Ready for voice input.'
+                          : 'Hardware check recommended.'}
+                    </p>
                   </div>
 
                   <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
@@ -117,15 +191,35 @@ export default async function DevicesPage() {
                       <Volume2 className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-semibold text-foreground">Speaker</p>
                     </div>
-                    <StatusBadge className="mt-3" status={device.speaker === 'ready' ? 'online' : 'warning'} />
+                    <StatusBadge
+                      className="mt-3"
+                      status={speakerOff ? 'offline' : device.speaker === 'ready' ? 'online' : 'warning'}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {speakerOff
+                        ? 'Parent control is off.'
+                        : device.speaker === 'ready'
+                          ? 'Ready for spoken replies.'
+                          : 'Hardware check recommended.'}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <div className="border-t border-border bg-muted/25 px-5 py-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <StatusBadge status={isOnline ? 'online' : 'offline'} />
+                  <StatusBadge
+                    status={poweredOff ? 'offline' : paused ? 'warning' : isOnline ? 'online' : 'offline'}
+                  />
                   {device.lastMode && <ModeBadge mode={device.lastMode} />}
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Mic className="h-3.5 w-3.5" />
+                    Mic {microphoneOff ? 'off' : 'on'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Volume2 className="h-3.5 w-3.5" />
+                    Speaker {speakerOff ? 'off' : 'on'}
+                  </span>
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <Radio className="h-3.5 w-3.5" />
                     Button-to-talk flow only
@@ -156,4 +250,13 @@ function DeviceMetric({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
 }

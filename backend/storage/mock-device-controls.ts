@@ -3,7 +3,7 @@ import type {
   ParentDeviceControlRequest,
   ParentDeviceControlResponse,
   ParentDeviceControlState,
-} from '@/shared/types'
+} from '@/shared/api'
 
 const DEFAULT_CONTROLS: ParentDeviceControlState = {
   device: 'active',

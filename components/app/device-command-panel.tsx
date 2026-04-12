@@ -14,7 +14,10 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { ParentDeviceControlState } from '@/shared/types'
+import {
+  parentDeviceControlResponseSchema,
+  type ParentDeviceControlState,
+} from '@/shared/api'
 
 type DeviceCommandPanelProps = {
   deviceId: string
@@ -52,9 +55,7 @@ export function DeviceCommandPanel({
           throw new Error('Failed to load device controls')
         }
 
-        const payload = (await response.json()) as {
-          controls: ParentDeviceControlState
-        }
+        const payload = parentDeviceControlResponseSchema.parse(await response.json())
 
         if (!active) return
         setControlState(payload.controls)
@@ -96,9 +97,7 @@ export function DeviceCommandPanel({
         throw new Error('Failed to update device controls')
       }
 
-      const payload = (await response.json()) as {
-        controls: ParentDeviceControlState
-      }
+      const payload = parentDeviceControlResponseSchema.parse(await response.json())
       setControlState(payload.controls)
     } catch {
       setError('Unable to save parent controls right now.')

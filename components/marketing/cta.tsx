@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button'
 
 export function CTA() {
   return (
-    <section className="border-t border-border/70 py-24">
+    <section className="py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.78),rgba(247,241,217,0.86))] px-6 py-12 shadow-[0_24px_60px_-28px_rgba(0,95,153,0.35)] sm:px-10 lg:px-14">
+        <div className="relative overflow-hidden rounded-[2.5rem] border border-transparent bg-[linear-gradient(135deg,rgba(255,255,255,0.78),rgba(247,241,217,0.86))] px-6 py-12 shadow-[0_24px_60px_-28px_rgba(0,95,153,0.35)] sm:px-10 lg:px-14">
           <div className="wave-grid pointer-events-none absolute inset-0 opacity-25" />
           <div className="pointer-events-none absolute left-8 top-6 h-36 w-36 rounded-full bg-accent/18 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 right-8 h-44 w-44 rounded-full bg-primary/16 blur-3xl" />

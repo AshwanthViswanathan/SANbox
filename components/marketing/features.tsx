@@ -41,8 +41,7 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="relative overflow-hidden border-t border-border/70 py-24">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/70" />
+    <section id="features" className="relative overflow-hidden py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div className="stitch-readable-surface space-y-4 px-5 py-5 sm:px-6">
@@ -55,9 +54,12 @@ export function Features() {
             </p>
           </div>
 
-          <div className="divide-y divide-border/60 overflow-hidden rounded-[2rem] border border-white/70 bg-white/66 shadow-[0_22px_50px_-26px_rgba(0,95,153,0.28)] backdrop-blur-sm">
+          <div className="grid gap-3 rounded-[2rem] bg-transparent">
             {features.map((feature) => (
-              <div key={feature.title} className="grid gap-4 px-5 py-6 sm:grid-cols-[auto_1fr] sm:px-7">
+              <div
+                key={feature.title}
+                className="grid gap-4 rounded-[1.75rem] border border-transparent bg-white/66 px-5 py-6 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm sm:grid-cols-[auto_1fr] sm:px-7"
+              >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   {feature.icon}
                 </div>

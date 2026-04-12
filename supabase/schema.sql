@@ -31,6 +31,16 @@ create table if not exists public.sessions (
   updated_at timestamptz not null default now()
 );
 
+alter table public.devices
+  add column if not exists assigned_lesson_id text,
+  add column if not exists assigned_by_user_id uuid references auth.users (id) on delete set null,
+  add column if not exists lesson_assignment_status text not null default 'none' check (lesson_assignment_status in ('none', 'assigned', 'active', 'completed')),
+  add column if not exists lesson_assigned_at timestamptz,
+  add column if not exists lesson_started_at timestamptz,
+  add column if not exists lesson_completed_at timestamptz,
+  add column if not exists active_session_id text references public.sessions (id) on delete set null,
+  add column if not exists current_step_id text;
+
 create table if not exists public.turns (
   id text primary key,
   session_id text not null references public.sessions (id) on delete cascade,
@@ -84,6 +94,8 @@ create table if not exists public.tool_runs (
 create index if not exists sessions_owner_user_id_idx on public.sessions (owner_user_id);
 create index if not exists sessions_device_id_idx on public.sessions (device_id);
 create index if not exists sessions_last_turn_at_idx on public.sessions (last_turn_at desc);
+create index if not exists devices_owner_user_id_idx on public.devices (owner_user_id);
+create index if not exists devices_assignment_status_idx on public.devices (lesson_assignment_status);
 create index if not exists turns_session_id_created_at_idx on public.turns (session_id, created_at desc);
 create index if not exists turns_session_id_turn_index_idx on public.turns (session_id, turn_index);
 create index if not exists turns_blocked_created_at_idx on public.turns (assistant_blocked, created_at desc);
