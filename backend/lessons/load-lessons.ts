@@ -76,11 +76,14 @@ export type TeachBoxParsedLesson = {
   raw: string
 }
 
+const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---/
+const TEACHBOX_STEP_PATTERN = /```teachbox-step\s*?\r?\n([\s\S]*?)\r?\n```/g
+
 function parseFrontmatter(raw: string) {
-  const match = raw.match(/^---\n([\s\S]*?)\n---/)
+  const match = raw.match(FRONTMATTER_PATTERN)
   if (!match) return {}
 
-  const lines = match[1].split('\n')
+  const lines = match[1].split(/\r?\n/)
   const data: Record<string, string> = {}
 
   for (const line of lines) {
@@ -95,9 +98,7 @@ function parseFrontmatter(raw: string) {
 }
 
 function parseTeachboxStepBlocks(raw: string) {
-  const blocks = [...raw.matchAll(/```teachbox-step\s*?\n([\s\S]*?)\n```/g)].map((match) =>
-    match[1].trim()
-  )
+  const blocks = [...raw.matchAll(TEACHBOX_STEP_PATTERN)].map((match) => match[1].trim())
 
   const steps = blocks.map((block, index) => {
     try {
