@@ -25,7 +25,11 @@ export async function POST(
   const { deviceId } = await context.params
 
   try {
-    const response = await startAssignedLesson(deviceId, parsed.data.session_id)
+    const response = await startAssignedLesson(
+      deviceId,
+      parsed.data.session_id,
+      parsed.data.lesson_id ?? null
+    )
     return NextResponse.json(startLessonResponseSchema.parse(response))
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to start lesson.'

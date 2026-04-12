@@ -254,28 +254,30 @@ function isFlagged(inputLabel: SafeguardLabel, outputLabel: SafeguardLabel | nul
 }
 
 async function getParentDevices(): Promise<ParentDeviceListItem[]> {
+  const fallbackDevices: ParentDeviceListItem[] = MOCK_DEVICES.map((device) => ({
+    ...device,
+    last_seen_at: null,
+  }))
+
   const userId = await getAuthenticatedUserId()
   if (!userId) {
-    return MOCK_DEVICES.map((device) => ({
-      ...device,
-      last_seen_at: null,
-    }))
+    return fallbackDevices
   }
 
   const rows = await loadPersistedDevices(userId)
   if (rows.length > 0) {
-    return rows.map((device) => ({
+    const persistedDevices: ParentDeviceListItem[] = rows.map((device) => ({
       id: device.id,
       name: device.name,
       lastSeen: formatLastSeen(device.last_seen_at),
       last_seen_at: device.last_seen_at,
     }))
+
+    return [...new Map([...fallbackDevices, ...persistedDevices].map((device) => [device.id, device])).values()]
+      .sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return MOCK_DEVICES.map((device) => ({
-    ...device,
-    last_seen_at: null,
-  }))
+  return fallbackDevices
 }
 
 async function loadPersistedDevices(ownerUserId: string): Promise<ParentDeviceRow[]> {

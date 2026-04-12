@@ -350,8 +350,8 @@ async function persistLessonRun(params: {
     id: params.sessionId,
     device_id: params.deviceId,
     owner_user_id: params.ownerUserId,
-    mode: 'lesson',
-    status: params.state.status === 'completed' ? 'completed' : 'active',
+    mode: 'lesson' as const,
+    status: (params.state.status === 'completed' ? 'completed' : 'active') as 'active' | 'completed',
     lesson_id: params.lessonId,
     lesson_step_id: params.stepId,
     lesson_state: serializeLessonState(params.state),
@@ -359,27 +359,59 @@ async function persistLessonRun(params: {
   }
 
   if (existingSession) {
-    await admin.from('sessions').update(payload).eq('id', params.sessionId)
+    const { error } = await admin.from('sessions').update(payload).eq('id', params.sessionId)
+    if (error) {
+      console.error('Failed to update session:', error)
+      lessonRunStore.set(params.deviceId, {
+        deviceId: params.deviceId,
+        sessionId: params.sessionId,
+        lessonId: params.lessonId,
+        ownerUserId: params.ownerUserId,
+        state: params.state,
+        startedAt: params.startedAt,
+      })
+    }
   } else {
-    await admin.from('sessions').insert(payload)
+    const { error } = await admin.from('sessions').insert(payload)
+    if (error) {
+      console.error('Failed to insert session:', error)
+      lessonRunStore.set(params.deviceId, {
+        deviceId: params.deviceId,
+        sessionId: params.sessionId,
+        lessonId: params.lessonId,
+        ownerUserId: params.ownerUserId,
+        state: params.state,
+        startedAt: params.startedAt,
+      })
+    }
   }
 }
 
 async function loadStoredLessonRun(deviceId: string, sessionId: string): Promise<StoredLessonRun | null> {
   const inMemory = lessonRunStore.get(deviceId)
-  if (inMemory && inMemory.sessionId === sessionId) {
-    return inMemory
+  if (inMemory) {
+    if (inMemory.sessionId === sessionId) {
+      return inMemory
+    }
+    console.warn(`Session ID mismatch for device ${deviceId}: expected ${sessionId}, found ${inMemory.sessionId}`)
   }
 
   const device = await fetchDeviceLessonRow(deviceId)
   const session = await fetchSessionLessonRow(sessionId)
 
-  if (!device?.row?.assigned_lesson_id || !session?.row?.lesson_id) {
+  if (!session?.row) {
+    console.warn(`No session found in database for sessionId: ${sessionId}`)
+    return null
+  }
+
+  if (!session.row.lesson_id) {
+    console.warn(`Session ${sessionId} exists but has no lesson_id`)
     return null
   }
 
   const lesson = await loadLessonById(session.row.lesson_id)
   if (!lesson) {
+    console.warn(`Lesson ${session.row.lesson_id} not found for session ${sessionId}`)
     return null
   }
 
@@ -395,14 +427,18 @@ async function loadStoredLessonRun(deviceId: string, sessionId: string): Promise
       status: session.row.status === 'completed' ? 'completed' : 'active',
     }
 
-  return {
+  const storedRun = {
     deviceId,
     sessionId,
     lessonId: session.row.lesson_id,
     ownerUserId: session.row.owner_user_id,
     state: parsedState,
-    startedAt: device.row.lesson_started_at,
+    startedAt: device?.row?.lesson_started_at ?? null,
   }
+
+  lessonRunStore.set(deviceId, storedRun)
+
+  return storedRun
 }
 
 export async function getLessonVoiceTurnContext(deviceId: string, sessionId: string) {
@@ -441,8 +477,9 @@ export async function recordPauseFollowup(deviceId: string, sessionId: string) {
     throw new Error(`Lesson is not awaiting a pause question for device: ${deviceId}`)
   }
 
+  const maxPauseFollowups = Math.min(2, step.allowed_followups)
   const used = storedRun.state.pause_followups_used + 1
-  const exhausted = used >= step.allowed_followups
+  const exhausted = used >= maxPauseFollowups
   const nextState: LessonSessionState = {
     ...storedRun.state,
     pause_followups_used: used,
@@ -469,7 +506,7 @@ export async function recordPauseFollowup(deviceId: string, sessionId: string) {
     state: nextState,
     step,
     shouldAutoContinue: exhausted,
-    followupsRemaining: Math.max(0, step.allowed_followups - used),
+    followupsRemaining: Math.max(0, maxPauseFollowups - used),
   }
 }
 
@@ -673,13 +710,17 @@ export async function assignLessonToDevice(
 
 export async function startAssignedLesson(
   deviceId: string,
-  sessionId: string
+  sessionId: string,
+  lessonIdOverride: string | null = null
 ): Promise<StartLessonResponse> {
   const persisted = await fetchDeviceLessonRow(deviceId)
   const startedAt = new Date().toISOString()
 
   const assignedLessonId =
-    persisted?.row?.assigned_lesson_id ?? getMemoryState(deviceId).assigned_lesson?.lesson_id ?? null
+    lessonIdOverride ??
+    persisted?.row?.assigned_lesson_id ??
+    getMemoryState(deviceId).assigned_lesson?.lesson_id ??
+    null
 
   if (!assignedLessonId) {
     throw new Error(`No assigned lesson for device: ${deviceId}`)
@@ -710,9 +751,26 @@ export async function continueActiveLesson(
   deviceId: string,
   sessionId: string
 ): Promise<LessonInteractionResponse> {
-  const storedRun = await loadStoredLessonRun(deviceId, sessionId)
+  let storedRun = await loadStoredLessonRun(deviceId, sessionId)
   if (!storedRun) {
-    throw new Error(`No active lesson session for device: ${deviceId}`)
+    console.warn(`No stored lesson run found for device ${deviceId}, session ${sessionId}. Attempting recovery...`)
+    const persisted = await fetchDeviceLessonRow(deviceId)
+    const assignedLessonId =
+      persisted?.row?.assigned_lesson_id ?? getMemoryState(deviceId).assigned_lesson?.lesson_id ?? null
+
+    if (assignedLessonId) {
+      console.log(`Found assigned lesson ${assignedLessonId}, starting new lesson session`)
+      await startAssignedLesson(deviceId, sessionId, assignedLessonId)
+      storedRun = await loadStoredLessonRun(deviceId, sessionId)
+    }
+  }
+
+  if (!storedRun) {
+    const inMemory = lessonRunStore.get(deviceId)
+    const debugInfo = inMemory 
+      ? `In-memory session: ${inMemory.sessionId}, requested: ${sessionId}`
+      : 'No in-memory session found'
+    throw new Error(`No active lesson session for device: ${deviceId}. ${debugInfo}`)
   }
 
   const lesson = await loadLessonById(storedRun.lessonId)
@@ -742,9 +800,10 @@ export async function continueActiveLesson(
   }
 
   if (step.type === 'pause') {
+    const maxPauseFollowups = Math.min(2, step.allowed_followups)
     if (
       storedRun.state.resume_pending ||
-      storedRun.state.pause_followups_used >= step.allowed_followups
+      storedRun.state.pause_followups_used >= maxPauseFollowups
     ) {
       const nextState = advanceToNextLessonStep(lesson, storedRun.state)
       const nextRuntime = buildLessonRuntime(lesson, nextState)
@@ -756,10 +815,7 @@ export async function continueActiveLesson(
         lessonId: storedRun.lessonId,
         state: nextState,
         startedAt: storedRun.startedAt ?? new Date().toISOString(),
-        runtimeOverride: {
-          ...nextRuntime,
-          prompt_text: `${step.resume_line} ${nextRuntime.prompt_text}`.trim(),
-        },
+        runtimeOverride: nextRuntime,
       })
     }
 

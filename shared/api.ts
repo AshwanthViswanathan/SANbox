@@ -122,6 +122,7 @@ export const assignLessonResponseSchema = z.object({
 
 export const startLessonRequestSchema = z.object({
   session_id: z.string(),
+  lesson_id: z.string().nullable().optional(),
 })
 
 export const startLessonResponseSchema = z.object({

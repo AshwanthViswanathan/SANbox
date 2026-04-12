@@ -54,6 +54,8 @@ function getOrCreateStorageId(key: string, prefix: string) {
   return created
 }
 
+const DEFAULT_PI_DEVICE_ID = 'pi_living_room'
+
 function getOrCreateDemoDeviceId() {
   const queryDeviceId = new URLSearchParams(window.location.search).get('device_id')?.trim()
   if (queryDeviceId) {
@@ -67,18 +69,8 @@ function getOrCreateDemoDeviceId() {
     return configured
   }
 
-  const existing = window.localStorage.getItem('teachbox_demo_device_id')
-  if (existing && !isLegacyHostDerivedDeviceId(existing)) {
-    return existing
-  }
-
-  const created = makeBrowserId('webdemo')
-  window.localStorage.setItem('teachbox_demo_device_id', created)
-  return created
-}
-
-function isLegacyHostDerivedDeviceId(deviceId: string) {
-  return /^web-[a-z0-9-]+(?:-\d+)?$/.test(deviceId)
+  window.localStorage.setItem('teachbox_demo_device_id', DEFAULT_PI_DEVICE_ID)
+  return DEFAULT_PI_DEVICE_ID
 }
 
 function dataUrlToPlayableSrc(dataUrl: string) {
@@ -304,6 +296,12 @@ function encodeWav(samples: Float32Array, sampleRate: number) {
   return new Blob([buffer], { type: 'audio/wav' })
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 function createTestToneDataUrl(durationMs = 700, sampleRate = 24000) {
   const sampleCount = Math.floor((sampleRate * durationMs) / 1000)
   const samples = new Float32Array(sampleCount)
@@ -447,24 +445,29 @@ export default function PiDisplayPage() {
     }
   }
 
-  const fetchLessonState = async (deviceId: string) => {
+  const fetchLessonState = async (deviceId: string, applyState = true) => {
     try {
       const response = await fetch(`/api/v1/devices/${deviceId}/lesson`, {
         cache: 'no-store',
       })
 
       if (!response.ok) {
-        return
+        return null
       }
 
       const payload = deviceLessonStateSchema.parse(await response.json())
-      setLessonState(payload)
+      if (applyState) {
+        setLessonState(payload)
+      }
 
       if (payload.active_session_id) {
         sessionIdRef.current = payload.active_session_id
       }
+
+      return payload
     } catch {
       // Ignore non-critical lesson state bootstrap failures in the Pi demo.
+      return null
     }
   }
 
@@ -566,32 +569,54 @@ export default function PiDisplayPage() {
   const startLesson = async () => {
     if (!deviceIdRef.current || !sessionIdRef.current || isLessonLoading) return
 
+    const deviceId = deviceIdRef.current
+    const sessionId = sessionIdRef.current
     setIsLessonLoading(true)
     cancelAutoRestart()
 
     try {
-      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionIdRef.current,
-        }),
-      })
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const response = await fetch(`/api/v1/devices/${deviceId}/lesson/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            lesson_id: lessonState?.assigned_lesson?.lesson_id ?? null,
+          }),
+        })
 
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | LessonInteractionResponse
-        | null
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | LessonInteractionResponse
+          | null
 
-      if (!response.ok) {
-        throw new Error(payload && 'error' in payload ? payload.error : 'Unable to start lesson.')
+        if (response.ok) {
+          const parsed = startLessonResponseSchema.parse(payload)
+          setIsLessonLoading(false)
+          await handleLessonInteraction(parsed)
+          return
+        }
+
+        const message =
+          payload && 'error' in payload ? payload.error ?? 'Unable to start lesson.' : 'Unable to start lesson.'
+
+        const shouldRetry =
+          attempt < 2 &&
+          message.startsWith('No assigned lesson for device:') &&
+          Boolean(deviceId)
+
+        if (shouldRetry) {
+          const refreshed = await fetchLessonState(deviceId, false)
+          if (refreshed?.status === 'assigned') {
+            await sleep(200)
+            continue
+          }
+        }
+
+        throw new Error(message)
       }
-
-      const parsed = startLessonResponseSchema.parse(payload)
-      setIsLessonLoading(false)
-      await handleLessonInteraction(parsed)
     } catch (error) {
       setState('error')
       setTranscript(error instanceof Error ? error.message : 'Unable to start lesson.')
@@ -756,10 +781,12 @@ export default function PiDisplayPage() {
         reason === 'auto' &&
         lessonState?.status === 'active' &&
         lessonAllowsVoiceInput &&
-        !recorderState.speechDetected &&
-        sessionIdRef.current
+        !recorderState.speechDetected
       ) {
-        await continueLesson(sessionIdRef.current)
+        setState('idle')
+        setTranscript('Ask a question when you are ready.')
+        setAssistantText('')
+        scheduleAutoRestart()
         return
       }
 

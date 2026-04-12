@@ -115,16 +115,19 @@ export function buildLessonRuntime(
         ...overrides,
       }
     case 'pause':
-      return {
-        step_type: 'pause',
-        input_mode: state.resume_pending ? 'none' : 'voice',
-        prompt_text: state.resume_pending ? step.resume_line : step.child_prompt,
-        choices: null,
-        followups_remaining: Math.max(0, step.allowed_followups - state.pause_followups_used),
-        attempts_remaining: null,
-        should_auto_continue: state.resume_pending,
-        is_complete: false,
-        ...overrides,
+      {
+        const maxPauseFollowups = Math.min(2, step.allowed_followups)
+        return {
+          step_type: 'pause',
+          input_mode: state.resume_pending ? 'none' : 'voice',
+          prompt_text: state.resume_pending ? step.resume_line : step.child_prompt,
+          choices: null,
+          followups_remaining: Math.max(0, maxPauseFollowups - state.pause_followups_used),
+          attempts_remaining: null,
+          should_auto_continue: state.resume_pending,
+          is_complete: false,
+          ...overrides,
+        }
       }
     case 'checkpoint_mcq':
       return {
