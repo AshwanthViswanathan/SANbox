@@ -26,6 +26,7 @@ type SessionDetailRow = {
   device_id: string
   mode: TeachBoxMode
   lesson_id: string | null
+  owner_user_id: string | null
 }
 
 type SessionTurnRow = {
@@ -38,8 +39,20 @@ type SessionTurnRow = {
   assistant_blocked: boolean
 }
 
+type SessionFlagTurnRow = {
+  session_id: string
+  input_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK'
+  output_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK' | null
+  assistant_blocked: boolean
+}
+
 type DbTurnIndexRow = {
   turn_index: number
+}
+
+type DeviceOwnerRow = {
+  id: string
+  owner_user_id: string | null
 }
 
 type StorageReader = Pick<SupabaseClient, 'from'>
@@ -52,25 +65,63 @@ export async function buildSessionSummary(
   supabase: StorageReader,
   ownerUserId: string
 ): Promise<ParentSessionsResponse> {
-  const { data, error } = await supabase
+  const reader = getReadClient(supabase)
+  const ownedDeviceIds = await getOwnedDeviceIds(reader, ownerUserId)
+  const { data: directSessions, error: directSessionsError } = await reader
     .from('sessions')
     .select('id, device_id, started_at, last_turn_at, mode, turn_count, flagged_count')
     .eq('owner_user_id', ownerUserId)
     .order('last_turn_at', { ascending: false })
 
-  if (error) {
-    throw new Error(`Failed to load session summaries: ${error.message}`)
+  if (directSessionsError) {
+    throw new Error(`Failed to load owned session summaries: ${directSessionsError.message}`)
   }
 
+  let deviceSessions: SessionSummaryRow[] = []
+
+  if (ownedDeviceIds.length > 0) {
+    const { data, error } = await reader
+      .from('sessions')
+      .select('id, device_id, started_at, last_turn_at, mode, turn_count, flagged_count')
+      .in('device_id', ownedDeviceIds)
+      .order('last_turn_at', { ascending: false })
+
+    if (error) {
+      throw new Error(`Failed to load device session summaries: ${error.message}`)
+    }
+
+    deviceSessions = (data ?? []) as SessionSummaryRow[]
+  }
+
+  const { data: orphanSessions, error: orphanSessionsError } = await reader
+    .from('sessions')
+    .select('id, device_id, started_at, last_turn_at, mode, turn_count, flagged_count')
+    .is('owner_user_id', null)
+    .order('last_turn_at', { ascending: false })
+
+  if (orphanSessionsError) {
+    throw new Error(`Failed to load orphan session summaries: ${orphanSessionsError.message}`)
+  }
+
+  const sessions = dedupeSessions([
+    ...((directSessions ?? []) as SessionSummaryRow[]),
+    ...deviceSessions,
+    ...((orphanSessions ?? []) as SessionSummaryRow[]),
+  ])
+  const flaggedCountsBySession = await loadFlaggedCountsBySession(
+    reader,
+    sessions.map((session) => session.id)
+  )
+
   return {
-    sessions: ((data ?? []) as SessionSummaryRow[]).map((session) => ({
+    sessions: sessions.map((session) => ({
       session_id: session.id,
       device_id: session.device_id,
       started_at: session.started_at,
       last_turn_at: session.last_turn_at,
       mode: session.mode,
       turn_count: session.turn_count,
-      flagged_count: session.flagged_count,
+      flagged_count: flaggedCountsBySession.get(session.id) ?? session.flagged_count,
     })),
   }
 }
@@ -80,10 +131,10 @@ export async function buildSessionDetail(
   ownerUserId: string,
   sessionId: string
 ): Promise<ParentSessionDetailResponse> {
-  const { data: session, error: sessionError } = await supabase
+  const reader = getReadClient(supabase)
+  const { data: session, error: sessionError } = await reader
     .from('sessions')
-    .select('id, device_id, mode, lesson_id')
-    .eq('owner_user_id', ownerUserId)
+    .select('id, device_id, mode, lesson_id, owner_user_id')
     .eq('id', sessionId)
     .maybeSingle()
 
@@ -103,7 +154,19 @@ export async function buildSessionDetail(
     }
   }
 
-  const { data: turns, error: turnsError } = await supabase
+  if (!(await canAccessSession(reader, ownerUserId, session as SessionDetailRow))) {
+    return {
+      session: {
+        session_id: sessionId,
+        device_id: 'unknown_device',
+        mode: 'free_chat',
+        lesson_id: null,
+      },
+      turns: [],
+    }
+  }
+
+  const { data: turns, error: turnsError } = await reader
     .from('turns')
     .select(
       'id, created_at, transcript, assistant_text, input_safeguard_label, output_safeguard_label, assistant_blocked'
@@ -138,6 +201,101 @@ export function toParentMode(mode: TeachBoxMode) {
   return mode
 }
 
+function getReadClient(fallback: StorageReader) {
+  try {
+    return createAdminClient()
+  } catch {
+    return fallback
+  }
+}
+
+function dedupeSessions(sessions: SessionSummaryRow[]) {
+  return [...new Map(sessions.map((session) => [session.id, session])).values()].sort(
+    (a, b) => new Date(b.last_turn_at).getTime() - new Date(a.last_turn_at).getTime()
+  )
+}
+
+async function getOwnedDeviceIds(reader: StorageReader, ownerUserId: string) {
+  const { data, error } = await reader
+    .from('devices')
+    .select('id')
+    .eq('owner_user_id', ownerUserId)
+
+  if (error) {
+    throw new Error(`Failed to load owned devices: ${error.message}`)
+  }
+
+  return ((data ?? []) as Pick<DeviceOwnerRow, 'id'>[]).map((device) => device.id)
+}
+
+async function canAccessSession(
+  reader: StorageReader,
+  ownerUserId: string,
+  session: SessionDetailRow
+) {
+  if (session.owner_user_id === ownerUserId) {
+    return true
+  }
+
+  const { data, error } = await reader
+    .from('devices')
+    .select('id, owner_user_id')
+    .eq('id', session.device_id)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Failed to verify session ownership: ${error.message}`)
+  }
+
+  const device = data as DeviceOwnerRow | null
+
+  if (device?.owner_user_id === ownerUserId) {
+    return true
+  }
+
+  return session.owner_user_id === null && device?.owner_user_id === null
+}
+
+async function loadFlaggedCountsBySession(
+  supabase: StorageReader,
+  sessionIds: string[]
+) {
+  if (sessionIds.length === 0) {
+    return new Map<string, number>()
+  }
+
+  const { data, error } = await supabase
+    .from('turns')
+    .select('session_id, input_safeguard_label, output_safeguard_label, assistant_blocked')
+    .in('session_id', sessionIds)
+
+  if (error) {
+    throw new Error(`Failed to load turn flags: ${error.message}`)
+  }
+
+  const counts = new Map<string, number>()
+
+  for (const turn of (data ?? []) as SessionFlagTurnRow[]) {
+    if (!isFlaggedTurn(turn)) continue
+    counts.set(turn.session_id, (counts.get(turn.session_id) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+function isFlaggedTurn(
+  turn: Pick<
+    SessionFlagTurnRow,
+    'input_safeguard_label' | 'output_safeguard_label' | 'assistant_blocked'
+  >
+) {
+  return (
+    turn.assistant_blocked ||
+    turn.input_safeguard_label !== 'SAFE' ||
+    (turn.output_safeguard_label !== null && turn.output_safeguard_label !== 'SAFE')
+  )
+}
+
 export async function logTurn(
   turn: SessionTurnResponse,
   ownerUserId?: string | null,
@@ -156,10 +314,12 @@ export async function logTurn(
     throw new Error(`Failed to look up device: ${deviceLookupError.message}`)
   }
 
+  let resolvedOwnerUserId = ownerUserId ?? existingDevice?.owner_user_id ?? null
+
   if (!existingDevice) {
     const { error: insertDeviceError } = await admin.from('devices').insert({
       id: turn.device_id,
-      owner_user_id: ownerUserId ?? null,
+      owner_user_id: resolvedOwnerUserId,
       name: turn.device_id,
       platform: turn.device_id.startsWith('web') ? 'web_pi' : 'rpi',
       last_seen_at: nowIso,
@@ -175,6 +335,7 @@ export async function logTurn(
 
     if (!existingDevice.owner_user_id && ownerUserId) {
       updatePayload.owner_user_id = ownerUserId
+      resolvedOwnerUserId = ownerUserId
     }
 
     const { error: updateDeviceError } = await admin
@@ -204,7 +365,7 @@ export async function logTurn(
     const { error: insertSessionError } = await admin.from('sessions').insert({
       id: turn.session_id,
       device_id: turn.device_id,
-      owner_user_id: ownerUserId ?? null,
+      owner_user_id: resolvedOwnerUserId,
       mode: turn.mode,
       status: turn.cosmo_state === 'error' ? 'errored' : 'active',
       lesson_id: lessonId,
@@ -224,8 +385,8 @@ export async function logTurn(
       last_turn_at: nowIso,
     }
 
-    if (!existingSession.owner_user_id && ownerUserId) {
-      updatePayload.owner_user_id = ownerUserId
+    if (!existingSession.owner_user_id && resolvedOwnerUserId) {
+      updatePayload.owner_user_id = resolvedOwnerUserId
     }
 
     const { error: updateSessionError } = await admin

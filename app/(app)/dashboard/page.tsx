@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   MessageSquareText,
   ShieldAlert,
 } from 'lucide-react'
+import shorelineImage from '@/docs/at-sunset-flamingo-on-lake-scene-vector-21803974.avif'
 
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge, SafeguardBadge } from '@/components/app/teachbox-badges'
@@ -62,7 +64,20 @@ export default async function DashboardOverview() {
 
       <section className="stitch-panel overflow-hidden p-2">
         <div className="grid gap-5 px-5 py-5 md:grid-cols-[1.7fr_1fr] md:px-6 md:py-6">
-          <div className="space-y-4">
+          <div className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
+            <div className="pointer-events-none absolute inset-0 -z-10">
+              <Image
+                src={shorelineImage}
+                alt=""
+                fill
+                priority
+                className="object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.97),rgba(252,247,225,0.9),rgba(252,247,225,0.46))]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_32%)]" />
+            </div>
+
+            <div className="space-y-4">
             <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
               Monitoring hub
             </div>
@@ -83,6 +98,7 @@ export default async function DashboardOverview() {
                 <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
               </Button>
             </div>
+          </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SANbox - Sessions Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#002e4e",
+                    "outline": "#7b7765",
+                    "surface-container": "#eee8cf",
+                    "secondary-fixed": "#fcd846",
+                    "error": "#b31b25",
+                    "primary-fixed": "#5eb1fc",
+                    "tertiary": "#a03a0f",
+                    "on-tertiary-container": "#5c1a00",
+                    "surface-bright": "#fcf7e1",
+                    "surface-tint": "#005f99",
+                    "secondary-dim": "#5f4e00",
+                    "on-primary": "#ecf3ff",
+                    "on-primary-fixed-variant": "#00385d",
+                    "on-surface-variant": "#5f5c4b",
+                    "tertiary-container": "#ff946e",
+                    "on-secondary-fixed": "#463900",
+                    "surface-container-low": "#f7f1d9",
+                    "tertiary-fixed-dim": "#fe7e4f",
+                    "outline-variant": "#b2ad9a",
+                    "surface-dim": "#dbd5b8",
+                    "primary-container": "#5eb1fc",
+                    "on-error-container": "#570008",
+                    "on-tertiary-fixed-variant": "#6b1f00",
+                    "surface-container-highest": "#e3ddc1",
+                    "on-secondary-fixed-variant": "#675500",
+                    "on-tertiary-fixed": "#320a00",
+                    "on-tertiary": "#ffefeb",
+                    "secondary": "#6d5a00",
+                    "tertiary-dim": "#902e02",
+                    "surface-variant": "#e3ddc1",
+                    "on-error": "#ffefee",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#fcf7e1",
+                    "error-container": "#fb5151",
+                    "on-primary-fixed": "#001222",
+                    "surface-container-high": "#e9e3c8",
+                    "on-background": "#312f21",
+                    "tertiary-fixed": "#ff946e",
+                    "primary-fixed-dim": "#4fa3ed",
+                    "inverse-on-surface": "#a19d8a",
+                    "primary-dim": "#005387",
+                    "secondary-container": "#fcd846",
+                    "primary": "#005f99",
+                    "on-secondary-container": "#5c4b00",
+                    "surface": "#fcf7e1",
+                    "inverse-primary": "#5eb1fc",
+                    "on-secondary": "#fff2cf",
+                    "on-surface": "#312f21",
+                    "error-dim": "#9f0519",
+                    "secondary-fixed-dim": "#edc939",
+                    "inverse-surface": "#100e04"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .coastal-gradient { background: linear-gradient(135deg, #005f99 0%, #5eb1fc 100%); }
+        .glass-panel { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full w-72 flex flex-col p-6 z-40 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-r-[3rem] shadow-[24px_0_48px_-12px_rgba(0,95,153,0.1)]">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-black text-sky-700">SANbox Explorer</h1>
+<p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Level 5 Beachcomber</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">waves</span>
+<span class="font-bold text-sm">Home</span>
+</a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-bold text-sm">Lessons</span>
+</a>
+<a class="flex items-center gap-3 bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-100 rounded-full px-6 py-3 my-1" href="#">
+<span class="material-symbols-outlined">sailing</span>
+<span class="font-bold text-sm">Adventures</span>
+</a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">bakery_dining</span>
+<span class="font-bold text-sm">Treasures</span>
+</a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">family_restroom</span>
+<span class="font-bold text-sm">Parents</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant/10 pt-6">
+<button class="w-full bg-sky-600 text-white rounded-full py-4 font-bold shadow-lg shadow-sky-600/20 mb-6 active:scale-95 transition-transform">
+                Start Playing
+            </button>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-bold text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-6 py-3 my-1 hover:bg-sky-50 dark:hover:bg-sky-800/50 rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-bold text-sm">Help</span>
+</a>
+</div>
+</div>
+</aside>
+<main class="ml-72 min-h-screen">
+<!-- TopAppBar (Shared Component Implementation) -->
+<header class="flex justify-between items-center w-full px-12 py-8 bg-slate-50 dark:bg-slate-950 sticky top-0 z-30">
+<div class="flex items-center gap-4">
+<button class="hover:bg-sky-100 dark:hover:bg-sky-900 rounded-full p-2 transition-all">
+<span class="material-symbols-outlined text-sky-700 dark:text-sky-300">menu</span>
+</button>
+<h2 class="text-2xl font-bold font-headline text-sky-700 dark:text-sky-300">Sessions Dashboard</h2>
+</div>
+<div class="flex items-center gap-3">
+<button class="hover:bg-sky-100 dark:hover:bg-sky-900 rounded-full p-2 transition-all">
+<span class="material-symbols-outlined text-sky-700 dark:text-sky-300">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-surface-container-high overflow-hidden border-2 border-primary-container">
+<img alt="User Profile" data-alt="profile avatar of a smiling young boy with curly hair and blue glasses wearing a yellow shirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBR98A38mZak_J2LaASxXfCPrcS3PqaPfaVH4tJ3mj2gbmNn5ThicyJzWrBTCd_sxszNxK4UxQTkVjy44RXqisDl-qAE3mpOjqmYBk_LuHvmz0YFL7SmG9ThzIzeVBkScmFnEFPXYU-weEX8LnRj_Z8rqiPaQU2NOOvGYp1N-tceIz4eG8BS9xD1SjJTUZAqcQvkJQI0FSaKOje9pluVWY21mYvazwY4UMnEd51FTkxwuzLHRiIS4Cp6AobITdtbQ6ISea6LgpKD2Y"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="px-12 pb-24 max-w-7xl mx-auto">
+<!-- Filters & Stats Section -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<span class="text-tertiary font-bold text-sm tracking-widest uppercase mb-2 block">Monitoring Hub</span>
+<h3 class="text-4xl font-black font-headline text-on-surface mb-6">Explore the Shoreline</h3>
+<div class="flex flex-wrap gap-3">
+<button class="px-6 py-2 rounded-full bg-primary text-on-primary font-bold transition-all active:scale-95">All sessions</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-bold hover:bg-tertiary-container/20 transition-all active:scale-95">Needs review</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-bold hover:bg-primary-container/20 transition-all active:scale-95">Lesson mode</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-bold hover:bg-secondary-container/20 transition-all active:scale-95">Free Chat</button>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
+<p class="text-xs font-bold text-on-surface-variant uppercase mb-1">Weekly Activity</p>
+<p class="text-2xl font-black text-primary">128 Turns</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-tertiary">
+<p class="text-xs font-bold text-on-surface-variant uppercase mb-1">Safety Flags</p>
+<p class="text-2xl font-black text-tertiary">0 Flags</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Grid & Detail View Container (Bento Style) -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Session List (Left Column) -->
+<div class="col-span-12 lg:col-span-5 flex flex-col gap-4">
+<!-- Session Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-2 border-primary-container shadow-xl shadow-primary/5 cursor-pointer hover:translate-x-2 transition-transform">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-bold text-lg text-on-surface">Session #SB-8821</h4>
+<p class="text-sm text-on-surface-variant">Today, 2:45 PM • Device: Sandy-iPad-01</p>
+</div>
+<span class="bg-primary-container/20 text-primary-dim px-3 py-1 rounded-full text-xs font-bold uppercase">Lesson Mode</span>
+</div>
+<div class="flex items-center gap-6 mt-4">
+<div class="flex -space-x-3">
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-surface-container overflow-hidden">
+<img alt="AI Avatar" data-alt="cute friendly robot head with blue glowing eyes and soft metallic finish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJgic-PXlhpYam66IWeg8vGZb14JKlDmM3sNjXatjK7Yv1XxRpepKP3iGmNL4MAS-G4hzxADhRjRWWy-hf88m9zsd8PhKg3vEIo90nIfstJ6Z3YIlz9cnusbl7JZQc_Pse4b2wM9r3bTyzOz2_lhaLqQeF1XINMsTMVId1H-0MF6SNrhNxpBy7LGfv5CnsSuxwJwMoHQwYqVYC43ba0QhybPDqaIhTccPIf0H5y98oCXVuhUMdLip9nhrwqK0a72oG3Xxt3xRTNdI"/>
+</div>
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-primary-container overflow-hidden">
+<img alt="Child Avatar" data-alt="cartoon boy smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKNlRilLLSCbHzUfxXthfMB1FFqkIL7lNB3dTuXZ2KGobZfmxgIsvdaASfxZ97KEzWzkKSbnRRSmXRv1ELtfjtQysBjwJGZYfMwIs9AJJR7mjeDlp3SH4lC7GLhKzPyD3Pt0i1fHTfuf7iydpAGkg2Rd_snxifgG1h7mh-JmM38NIdL_b-arcAug2vR-bENsVjl4bMNvm3LHu3Ke_f6ixwsPdedA6tHLu3seSa_jfPsOudSK0N57E_y5MWu9T4C4v9ZASemqZXKJk"/>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">14 Interaction turns</span>
+<span class="text-xs text-on-surface-variant">Topic: Marine Ecosystems</span>
+</div>
+</div>
+</div>
+<!-- Session Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-2 border-transparent hover:border-primary-container/30 transition-all cursor-pointer opacity-80 hover:opacity-100">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-bold text-lg text-on-surface">Session #SB-8819</h4>
+<p class="text-sm text-on-surface-variant">Today, 10:12 AM • Device: Sandy-iPad-01</p>
+</div>
+<span class="bg-secondary-container/30 text-secondary-dim px-3 py-1 rounded-full text-xs font-bold uppercase">Free Chat</span>
+</div>
+<div class="flex items-center gap-6 mt-4">
+<div class="flex -space-x-3">
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-surface-container overflow-hidden">
+<img alt="AI Avatar" data-alt="cute friendly robot head" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAt2E5Y-Y3_txo_1t23-51frU10yxJMdEmk0pp3niNHiHAUmGYgjqD5cif5Qmwr1iHomxgQAmv4slLJZNOuNDvp624RxVL_4kFYow7wBfxEHczLYzZyTtb9UVvIjWeA-6sACEXrYW2pXiT5GA_QfGCCl-kqVw_-K4K7mzQOHv2da5bSDmoxk7szIAnf0wGBZloXtv0XmbyD_YAGSOW3PYWFUV0mbeDR0O6q40hRz3ueEAjKrvRRpSC-biufM9noTJaBurSUfP5rtiM"/>
+</div>
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-primary-container overflow-hidden">
+<img alt="Child Avatar" data-alt="cartoon boy smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0Ic2DQfvILtR_uTpJ3_5wINT2BJOlUpvWfulQ8Y89spQ2mXU5KzdZXUl-gEOQrCdfiE6AgF30PNstXAyFuj-zUdEy6HE97TTA3gUKoqh3XR1bsE2Jv4Ylr7eJspXyy-lejvBbiVwamt3qKwU4VRTqfnbEnV4tOQxv7SppHnrcTbswUbpB8Rcn0BWR52WPe_qee2ltT0uGBgn_rFlPLn6A1ApMBn-rNheBTv_VS4ulhq3mL8Y7hOsWiuZHg-5w96m5sTH5VPkUt3I"/>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">8 Interaction turns</span>
+<span class="text-xs text-on-surface-variant">Topic: Space Exploration</span>
+</div>
+</div>
+</div>
+<!-- Session Card 3 (Needs Review) -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-2 border-transparent hover:border-tertiary-container/30 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-bold text-lg text-on-surface">Session #SB-8790</h4>
+<p class="text-sm text-on-surface-variant">Yesterday, 5:30 PM • Device: Web-Parent-Dashboard</p>
+</div>
+<span class="bg-tertiary-container/20 text-tertiary px-3 py-1 rounded-full text-xs font-bold uppercase">Needs Review</span>
+</div>
+<div class="flex items-center gap-6 mt-4">
+<div class="flex -space-x-3">
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-surface-container overflow-hidden">
+<img alt="AI Avatar" data-alt="cute friendly robot head" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbmE8Qp2CKMAnyGZN26gA4YS2-aiSdHIMy4hFfcaJVfrDUgwEXchQfNcLT2EpOaHlojjG8imuDlvzc4ALSfHFLIpUq8SpXcTyacv6zUNyWQNNG-RJTEhgQzODLdKlr_SdBeTmP9AusGpIQCstx5UhehDmJeu0lxVPrwR6vn1U_-7ciY6n2ZEJOgZpf861HPVyP6X0E1zpZnlAqavXCsowFotdtNMWYgOn17F5T45GCwPZZskLL4imhQ7QpKCfLgkTVV-Cq78llGZk"/>
+</div>
+<div class="w-10 h-10 rounded-full border-4 border-surface-container-lowest bg-primary-container overflow-hidden">
+<img alt="Child Avatar" data-alt="cartoon boy smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAhUB5pxoMmcK1A0TJU-mhWWQUsjrrpJRatBy8vlPyYEl1e6dnR0Mz2PC1HSZrXYYRVL5jZeRhigPczFf__rUCR7qPTQPZamJIjABzIQU1ymr35EY-FtWti_1Ho2teoFKfsOuI9uhLx1BEopt_-Pk__Eq8Eyu2I48ZbT4JxOa8i3icctNeCUVV3vHU-iEU8_PQyZYKCIFjkwoTLmyP7rHW60fbfSOfVXNsXtPn7f7O4o_OdA4DgkMgNaupwhe4cKt5d79JszR-rSs"/>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">32 Interaction turns</span>
+<span class="text-xs text-on-surface-variant">Topic: Why is the sky blue?</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Session Detail View (Right Column) -->
+<div class="col-span-12 lg:col-span-7 flex flex-col gap-6">
+<div class="bg-surface-container p-1 rounded-xl shadow-2xl overflow-hidden flex flex-col h-[700px]">
+<!-- Chat Header -->
+<div class="bg-surface-container-lowest p-6 flex justify-between items-center rounded-t-xl">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-full bg-sky-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">child_care</span>
+</div>
+<div>
+<h4 class="font-black text-xl text-on-surface">Conversation Log</h4>
+<p class="text-xs font-bold text-primary uppercase">Felix &amp; San the AI</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">print</span>
+</button>
+<button class="p-2 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">flag</span>
+</button>
+</div>
+</div>
+<!-- Chat Timeline -->
+<div class="flex-1 overflow-y-auto p-8 flex flex-col gap-6 bg-surface-container-low/50">
+<!-- San Message -->
+<div class="flex items-start gap-4 max-w-[85%]">
+<div class="w-10 h-10 rounded-full bg-primary-container flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xl">smart_toy</span>
+</div>
+<div class="bg-primary-container text-on-primary-container p-6 rounded-r-3xl rounded-bl-3xl shadow-md">
+<p class="font-medium leading-relaxed">Hi Felix! Today we are exploring the ocean floor. Did you know that the deepest part of the ocean is called the Mariana Trench?</p>
+<span class="text-[10px] font-bold uppercase opacity-60 mt-3 block">San • 2:45 PM</span>
+</div>
+</div>
+<!-- Child Message -->
+<div class="flex items-start gap-4 self-end max-w-[85%] flex-row-reverse">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-fixed text-xl">face</span>
+</div>
+<div class="bg-surface-container-lowest text-on-surface p-6 rounded-l-3xl rounded-br-3xl shadow-sm border border-outline-variant/10">
+<p class="font-medium leading-relaxed">Whoa, that sounds deep! Are there any monsters down there? 🐙</p>
+<span class="text-[10px] font-bold uppercase opacity-40 mt-3 block text-right">Felix • 2:46 PM</span>
+</div>
+</div>
+<!-- San Message -->
+<div class="flex items-start gap-4 max-w-[85%]">
+<div class="w-10 h-10 rounded-full bg-primary-container flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xl">smart_toy</span>
+</div>
+<div class="bg-primary-container text-on-primary-container p-6 rounded-r-3xl rounded-bl-3xl shadow-md">
+<p class="font-medium leading-relaxed">Not monsters, but very cool "Aliens of the Deep!" There's the Giant Squid and the Anglerfish with a glowing lantern on its head. Want to see a picture of the light?</p>
+<span class="text-[10px] font-bold uppercase opacity-60 mt-3 block">San • 2:47 PM</span>
+</div>
+</div>
+<!-- Image Card in Chat -->
+<div class="self-center w-full max-w-sm rounded-xl overflow-hidden shadow-xl my-4">
+<img alt="Anglerfish" data-alt="vibrant deep sea anglerfish with a bioluminescent glowing lure in a dark blue underwater environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuxhg_WT_4aZK7q9IYX5Y3QScFiFoHDEz0CU4V3KCacji-aJ0H1egyTS8TRL2j_Gkv5oGTVw9dZr0R57bktRV8_g3aQinBNfNXphg3hEPW8ToFNe-m7vdwYIfh9_DiMpkd2Vf7jKywIwX5Y5VJXHKk_6FnNsvjtLxpK4X0YUbEj-YYGHdRJS6BvTD9r89V5mRaZnWTMcYpkIeYKcQIi41keWhPZvt8wLfgclag7eqZCnPB6nkyn9GtJnBuRMcJm3ShXkXrQ5MEgEQ"/>
+<div class="bg-surface-container-highest p-4">
+<p class="text-sm font-bold text-on-surface">The Anglerfish's Glowing Lure</p>
+</div>
+</div>
+<!-- Child Message -->
+<div class="flex items-start gap-4 self-end max-w-[85%] flex-row-reverse">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-fixed text-xl">face</span>
+</div>
+<div class="bg-surface-container-lowest text-on-surface p-6 rounded-l-3xl rounded-br-3xl shadow-sm border border-outline-variant/10">
+<p class="font-medium leading-relaxed">It looks like a nightlight! Can it turn it off?</p>
+<span class="text-[10px] font-bold uppercase opacity-40 mt-3 block text-right">Felix • 2:49 PM</span>
+</div>
+</div>
+</div>
+<!-- Chat Sidebar (Context) Overlayed/Floating on larger screens -->
+<div class="bg-surface-container-highest p-8 border-t border-outline-variant/20 grid grid-cols-2 gap-8">
+<div>
+<h5 class="text-xs font-bold text-on-surface-variant uppercase mb-4 tracking-tighter">Session Context</h5>
+<ul class="space-y-3">
+<li class="flex items-center gap-3 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-lg">school</span>
+                                        Lesson: Oceanic Mysteries
+                                    </li>
+<li class="flex items-center gap-3 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-lg">schedule</span>
+                                        Duration: 18 minutes
+                                    </li>
+<li class="flex items-center gap-3 text-sm font-medium">
+<span class="material-symbols-outlined text-primary text-lg">verified_user</span>
+                                        Safety Check: Verified Clear
+                                    </li>
+</ul>
+</div>
+<div>
+<h5 class="text-xs font-bold text-on-surface-variant uppercase mb-4 tracking-tighter">Lesson Progress</h5>
+<div class="w-full bg-surface-container-low h-3 rounded-full overflow-hidden mb-3">
+<div class="bg-primary h-full rounded-full" style="width: 65%"></div>
+</div>
+<p class="text-sm font-bold text-on-surface">65% Objective Complete</p>
+<p class="text-xs text-on-surface-variant">Objective: Identify 3 deep-sea creatures.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (Shared Component Override) -->
+<button class="fixed bottom-10 right-10 w-16 h-16 coastal-gradient text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 active:scale-90 transition-transform z-50">
+<span class="material-symbols-outlined text-3xl">mic</span>
+</button>
+</body></html>

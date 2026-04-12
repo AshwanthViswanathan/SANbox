@@ -117,12 +117,18 @@ returns trigger
 language plpgsql
 as $$
 declare
-  blocked_delta integer := case when new.assistant_blocked then 1 else 0 end;
+  flagged_delta integer := case
+    when new.assistant_blocked
+      or new.input_safeguard_label <> 'SAFE'
+      or (new.output_safeguard_label is not null and new.output_safeguard_label <> 'SAFE')
+    then 1
+    else 0
+  end;
 begin
   update public.sessions
   set
     turn_count = turn_count + 1,
-    flagged_count = flagged_count + blocked_delta,
+    flagged_count = flagged_count + flagged_delta,
     last_turn_at = new.created_at
   where id = new.session_id;
 

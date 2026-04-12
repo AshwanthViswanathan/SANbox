@@ -31,7 +31,17 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  await supabase.auth.getUser()
+  try {
+    await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Supabase auth timeout in proxy.')), 3000)
+      }),
+    ])
+  } catch {
+    // Local development should still render even if Supabase is unavailable.
+    return response
+  }
 
   return response
 }
