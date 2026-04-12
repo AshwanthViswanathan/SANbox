@@ -94,7 +94,7 @@ export default async function SessionsPage({
           <EmptyState
             icon={<Clock3 className="h-5 w-5" />}
             title="No sessions in this view"
-            description="The current filter does not match any of the available SANbox demo sessions."
+            description="The current filter does not match any of the available demo sessions."
           />
         </div>
       ) : (

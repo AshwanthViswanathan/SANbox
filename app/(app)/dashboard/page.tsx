@@ -59,7 +59,7 @@ export default async function DashboardOverview() {
       <PageHeader
         title="SANbox Dashboard"
         description="Dive into your child's learning sessions, review flagged turns, and keep an eye on lesson use."
-        badge="DEMO READY"
+        badge="DEMO"
       />
 
       <section className="stitch-panel overflow-hidden p-2">

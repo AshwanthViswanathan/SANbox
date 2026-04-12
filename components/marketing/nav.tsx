@@ -28,7 +28,7 @@ export function MarketingNav() {
             </span>
           </div>
           <span className="ml-1 hidden items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-mono font-medium text-primary lg:inline-flex">
-            COASTAL DEMO
+            DEMO
           </span>
         </Link>
 

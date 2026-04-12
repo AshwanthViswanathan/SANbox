@@ -30,7 +30,7 @@ export function CTA() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/pi">View Shore Demo</Link>
+                <Link href="/pi">Demo</Link>
               </Button>
             </div>
           </div>
