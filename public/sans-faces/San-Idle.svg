@@ -1,0 +1,23 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 423 334" width="423" height="334">
+	<defs>
+		<image  width="147" height="44" id="img1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJMAAAAsCAMAAABWp3qHAAAAAXNSR0IB2cksfwAAAIRQTFRFAAAA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////INvm0QAAACx0Uk5TAA8+agWP/v+LIM/NH2w9BNHQAn978vEtKYB8Z2JmNjT9ko0G0iHOHpGMbg5IGZmTAAABNklEQVR4nO3YTUvDQBDG8XmaHKxFii2+BLWgRej3/y4ipagUQ31BRLTopbImm1J3px7mtBNh/lBIupcffXJpQHUAyDlH7QjVJ69JRK6zWmlzfBWmi+/1TY6lHgQ9wodrTH18bQ528aojiqYCDcPfZu9FhdTd+VxfZZ0lYZC9B4f9Zw0SmwpHb9Hx/mNqUFURPjHDBU7itQ7KtJw6PhWK+KkePKT11PGp2mDiU7XBxAlm+jszyTKTLDPJMpMsM8kykywzyTKTLDPJMpOsf2Fif/gO71NqmrZMo6foi+N5Sk3Tlik/DdcqSoXXh3wq0PkiPL5Ny/HxqUBj/D5CWXGTGlTFpwLRJeabw6kCiWhyF9xcXPt30aPSv+Acz5TeRbOp4C+AybR3dqUjIj4V1BxR0VQtMUVT/QAP0pUrep1K2gAAAABJRU5ErkJggg=="/>
+	</defs>
+	<style>
+		.s0 { fill: #ffffff;stroke: #2c8383;stroke-linecap: round;stroke-linejoin: round;stroke-width: 15 } 
+		.s1 { fill: #000000;stroke: #2c8383;stroke-linecap: round;stroke-linejoin: round;stroke-width: 15 } 
+		.s2 { fill: #2f8484;stroke: #2c8383;stroke-linecap: round;stroke-linejoin: round;stroke-width: 15 } 
+		.s3 { fill: #000000;stroke: #ffffff;stroke-linecap: round;stroke-linejoin: round;stroke-width: 10 } 
+		.s4 { fill: #2c8383;stroke: #2c8383;stroke-linecap: round;stroke-linejoin: round;stroke-width: 15 } 
+	</style>
+	<path class="s0" d="m58 95h307.9c12.2 0 22 9.8 22 22v187.6c0 12.1-9.8 22-22 22h-307.9c-12.2 0-22-9.9-22-22v-187.6c0-12.2 9.8-22 22-22z"/>
+	<path class="s1" d="m183 260h57"/>
+	<path fill-rule="evenodd" class="s2" d="m212 46c-10.5 0-19-8.5-19-19 0-10.5 8.5-19 19-19 10.5 0 19 8.5 19 19 0 10.5-8.5 19-19 19z"/>
+	<path class="s1" d="m212 50v44"/>
+	<path class="s3" d="m207 13c0 0-7.3-1-12 10"/>
+	<path fill-rule="evenodd" class="s0" d="m16 171h11c4.4 0 8 3.6 8 8v76c0 4.4-3.6 8-8 8h-11c-4.4 0-8-3.6-8-8v-76c0-4.4 3.6-8 8-8z"/>
+	<path fill-rule="evenodd" class="s0" d="m396 171h11c4.4 0 8 3.6 8 8v76c0 4.4-3.6 8-8 8h-11c-4.4 0-8-3.6-8-8v-76c0-4.4 3.6-8 8-8z"/>
+	<path class="s1" d="m190 163h42"/>
+	<path class="s4" d="m41 153h132c0 0 20.1-1.2 16 25-4.1 26.2-27 55.3-66 51-39-4.3-53.5-65.2-42-71 11.5-5.8-40-5-40-5zm0 0h132c0 0 20.1-1.2 16 25-4.1 26.2-27 55.3-66 51-39-4.3-53.5-65.2-42-71 11.5-5.8-40-5-40-5z"/>
+	<path class="s4" d="m382.6 153h-132c0 0-20.2-1.2-16 25 4.1 26.2 26.9 55.3 66 51 39-4.3 53.4-65.2 42-71-11.5-5.8 40-5 40-5zm0 0h-132c0 0-20.2-1.2-16 25 4.1 26.2 26.9 55.3 66 51 39-4.3 53.4-65.2 42-71-11.5-5.8 40-5 40-5z"/>
+	<use id="Layer 1" href="#img1" x="138" y="169"/>
+</svg>
