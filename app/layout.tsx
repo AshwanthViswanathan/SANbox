@@ -4,8 +4,9 @@ import { FloatingChat } from '@/components/app/floating-chat'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Agentic — AI Hackathon Starter',
-  description: 'A production-ready agentic AI platform starter. Run agents, manage tasks, connect hardware.',
+  title: 'SANbox - AI Learning Companion',
+  description:
+    'SANbox is a voice-first AI learning companion for K-5 students with parent visibility, lesson tracking, and built-in safeguards.',
   generator: 'v0.app',
   icons: {
     icon: [

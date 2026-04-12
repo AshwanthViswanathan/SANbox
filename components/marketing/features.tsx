@@ -41,27 +41,33 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="border-t border-border/70 py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="mb-12">
-          <p className="mb-3 text-xs font-mono uppercase tracking-widest text-primary">What SANbox includes</p>
-          <h2 className="font-beach-display text-3xl font-bold leading-snug tracking-tight text-balance sm:text-4xl">
-            A calm beach theme over the same reliable learning stack,
-            <br />
-            <span className="font-normal text-muted-foreground">designed for real family use.</span>
-          </h2>
-        </div>
+    <section id="features" className="relative overflow-hidden border-t border-border/70 py-24">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/70" />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+          <div className="space-y-4">
+            <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">How the frontend works</p>
+            <h2 className="font-beach-display max-w-md text-4xl font-bold leading-tight tracking-tight text-balance sm:text-5xl">
+              A quieter surface for the same stable learning stack.
+            </h2>
+            <p className="max-w-md text-base leading-7 text-muted-foreground">
+              The redesign keeps the app sessions-first. Children still talk to San, parents still review the same data, and the UI simply presents it with clearer hierarchy.
+            </p>
+          </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <div key={feature.title} className="beach-card flex flex-col gap-3 p-6">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
-                {feature.icon}
+          <div className="divide-y divide-border/60 overflow-hidden rounded-[2rem] border border-white/70 bg-white/58 shadow-[0_22px_50px_-26px_rgba(0,95,153,0.28)] backdrop-blur-sm">
+            {features.map((feature) => (
+              <div key={feature.title} className="grid gap-4 px-5 py-6 sm:grid-cols-[auto_1fr] sm:px-7">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  {feature.icon}
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold text-foreground">{feature.title}</h3>
+                  <p className="max-w-2xl text-sm leading-7 text-muted-foreground">{feature.description}</p>
+                </div>
               </div>
-              <h3 className="font-semibold text-foreground">{feature.title}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

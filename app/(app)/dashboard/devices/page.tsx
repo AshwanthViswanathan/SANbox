@@ -11,14 +11,14 @@ export default async function DevicesPage() {
   const onlineDevices = devices.filter((device) => device.status === 'online').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Device Status"
         description="Voice devices with simple connection, parent controls, and session visibility for the SANbox demo."
         badge={`${onlineDevices}/${devices.length} ONLINE`}
       />
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <DeviceStat label="Devices" value={String(devices.length)} />
         <DeviceStat label="Online now" value={String(onlineDevices)} />
         <DeviceStat
@@ -27,8 +27,9 @@ export default async function DevicesPage() {
         />
       </div>
 
-      <div className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,244,245,0.78))] px-5 py-4">
-        <p className="text-sm font-semibold text-foreground">Parent pause and power controls</p>
+      <div className="stitch-panel px-6 py-6">
+        <p className="stitch-label text-tertiary">Device controls</p>
+        <p className="stitch-heading mt-2 text-2xl">Parent pause and power controls</p>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
           This adds a safe shoreline control in the dashboard without changing the existing parent session
           routes, lessons route, or the child turn endpoint. The control state is local to the parent UI
@@ -41,7 +42,7 @@ export default async function DevicesPage() {
           const isOnline = device.status === 'online'
 
           return (
-            <article key={device.id} className="panel overflow-hidden">
+            <article key={device.id} className="stitch-card overflow-hidden">
               <div className="grid gap-4 px-5 py-5 lg:grid-cols-[1fr_1.15fr]">
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
@@ -73,7 +74,7 @@ export default async function DevicesPage() {
                     </span>
                   </div>
 
-                  <div className="rounded-[1.25rem] bg-muted/35 px-4 py-4">
+                  <div className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Last seen</p>
                       <p className="text-sm font-semibold text-foreground">{device.lastSeen}</p>
@@ -103,7 +104,7 @@ export default async function DevicesPage() {
                     isOnline={isOnline}
                   />
 
-                  <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4">
+                  <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
                     <div className="flex items-center gap-2">
                       <Mic className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-semibold text-foreground">Microphone</p>
@@ -111,7 +112,7 @@ export default async function DevicesPage() {
                     <StatusBadge className="mt-3" status={device.microphone === 'ready' ? 'online' : 'warning'} />
                   </div>
 
-                  <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4">
+                  <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
                     <div className="flex items-center gap-2">
                       <Volume2 className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-semibold text-foreground">Speaker</p>
@@ -141,17 +142,17 @@ export default async function DevicesPage() {
 
 function DeviceStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="panel px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+    <div className="stitch-card px-5 py-5">
+      <p className="stitch-label">{label}</p>
+      <p className="stitch-heading mt-2 text-2xl">{value}</p>
     </div>
   )
 }
 
 function DeviceMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
+      <p className="stitch-label">{label}</p>
       <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   )

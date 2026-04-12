@@ -16,24 +16,29 @@ export function MarketingNav() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/70 bg-background/75 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/68 px-4 shadow-[0_16px_40px_-24px_rgba(0,95,153,0.4)] backdrop-blur-xl sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/12 text-primary">
             <Shell className="h-4 w-4" />
           </span>
-          <span>SANbox</span>
-          <span className="ml-1 hidden items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium text-primary sm:inline-flex">
-            SHORE GUIDE
+          <div className="flex flex-col">
+            <span className="font-beach-display text-lg leading-none">SANbox</span>
+            <span className="hidden text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground sm:block">
+              Voice learning companion
+            </span>
+          </div>
+          <span className="ml-1 hidden items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-mono font-medium text-primary lg:inline-flex">
+            COASTAL DEMO
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-7 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
@@ -50,7 +55,7 @@ export function MarketingNav() {
         </div>
 
         <button
-          className="rounded p-1.5 text-muted-foreground hover:text-foreground md:hidden"
+          className="rounded-full p-2 text-muted-foreground hover:bg-sky-50 hover:text-foreground md:hidden"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
@@ -58,19 +63,24 @@ export function MarketingNav() {
         </button>
       </div>
 
-      <div className={cn('border-t border-border bg-background md:hidden', open ? 'block' : 'hidden')}>
-        <nav className="flex flex-col gap-1 px-4 py-3">
+      <div
+        className={cn(
+          'mx-3 mt-2 rounded-[1.75rem] border border-white/70 bg-white/82 p-3 shadow-[0_16px_40px_-24px_rgba(0,95,153,0.4)] backdrop-blur-xl sm:mx-6 md:hidden',
+          open ? 'block' : 'hidden'
+        )}
+      >
+        <nav className="flex flex-col gap-1">
           {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="py-2 text-sm text-muted-foreground hover:text-foreground"
+              className="rounded-full px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-sky-50 hover:text-foreground"
               onClick={() => setOpen(false)}
             >
               {link.label}
             </Link>
           ))}
-          <div className="mt-1 flex gap-2 border-t border-border pt-3">
+          <div className="mt-2 flex gap-2 border-t border-border/70 pt-3">
             <Button variant="outline" size="sm" className="flex-1" asChild>
               <Link href="/login">Sign in</Link>
             </Button>

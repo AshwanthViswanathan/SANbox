@@ -32,9 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main area */}
-      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
+      <div className="flex flex-1 min-w-0 flex-col overflow-hidden md:ml-72">
         <DashboardTopbar email={user.email ?? 'Signed in'} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto px-6 pb-10 sm:px-10">
           {children}
         </main>
       </div>

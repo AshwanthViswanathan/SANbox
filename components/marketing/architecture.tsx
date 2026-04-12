@@ -2,55 +2,56 @@ import { ArrowRight } from 'lucide-react'
 
 const layers = [
   {
-    label: 'Frontend',
-    items: ['Next.js App Router', 'React Server Components', 'Tailwind + shadcn/ui'],
+    label: 'Child Device',
+    items: ['Voice-first child device', 'Button-to-talk audio capture', 'Speaker playback + status heartbeat'],
     color: 'bg-accent/10 border-accent/30 text-accent',
   },
   {
-    label: 'Auth & Database',
-    items: ['Supabase Auth (JWT)', 'Postgres + RLS', 'Realtime subscriptions'],
+    label: 'Voice Pipeline',
+    items: ['Fast Whisper speech-to-text', 'Input safeguard checks', 'Gemini text-to-speech streaming'],
     color: 'bg-blue-500/10 border-blue-500/30 text-blue-600',
   },
   {
-    label: 'Agent Runtime',
-    items: ['API routes / edge fns', 'LLM provider abstraction', 'Tool call scaffolding'],
+    label: 'Tutor Orchestration',
+    items: ['Lesson-aware prompt routing', 'Low-latency LLM responses', 'Turn history + session summaries'],
     color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600',
   },
   {
-    label: 'Hardware / IoT',
-    items: ['Ingest webhook endpoint', 'Device heartbeat API', 'Token-based auth'],
+    label: 'Parent Dashboard',
+    items: ['Real-time session review', 'Flagged turn visibility', 'Device controls + lesson tracking'],
     color: 'bg-orange-500/10 border-orange-500/30 text-orange-600',
   },
 ]
 
 const folders = [
-  'app/(marketing)/ — public landing',
-  'app/(app)/       — auth-guarded shell',
-  'app/api/         — REST + webhook routes',
-  'components/      — shared UI',
-  'lib/supabase/    — client + server helpers',
-  'lib/ai/          — model abstraction',
+  'app/(marketing)/ - product landing page',
+  'app/(app)/ - parent dashboard shell',
+  'app/api/v1/ - device, lesson, and parent APIs',
+  'components/marketing/ - K-5 product messaging',
+  'components/app/ - family dashboard UI',
+  'lessons/ - markdown lesson content',
 ]
 
 export function Architecture() {
   return (
-    <section id="architecture" className="py-20 border-t border-border">
+    <section id="architecture" className="border-t border-border py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
-          {/* Left: stack layers */}
+        <div className="grid items-start gap-12 lg:grid-cols-2">
           <div>
-            <p className="text-xs font-mono uppercase tracking-widest text-accent mb-3">Stack architecture</p>
-            <h2 className="text-3xl font-bold tracking-tight mb-6 text-balance">
-              Layered for flexibility.
+            <p className="mb-3 text-xs font-mono uppercase tracking-widest text-accent">Learning system flow</p>
+            <h2 className="mb-6 text-3xl font-bold tracking-tight text-balance">
+              Hardware, cloud, and parent review in one loop.
             </h2>
             <div className="flex flex-col gap-3">
               {layers.map((layer, i) => (
                 <div key={layer.label} className="flex items-start gap-3">
-                  <div className={`flex items-center justify-center w-6 h-6 rounded text-xs font-mono font-bold border ${layer.color} shrink-0 mt-0.5`}>
+                  <div
+                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border text-xs font-mono font-bold ${layer.color}`}
+                  >
                     {i + 1}
                   </div>
-                  <div className="flex-1 panel p-3">
-                    <div className={`text-xs font-mono font-semibold mb-1 ${layer.color.split(' ')[2]}`}>
+                  <div className="panel flex-1 p-3">
+                    <div className={`mb-1 text-xs font-mono font-semibold ${layer.color.split(' ')[2]}`}>
                       {layer.label}
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -66,25 +67,24 @@ export function Architecture() {
             </div>
           </div>
 
-          {/* Right: folder structure */}
           <div>
-            <p className="text-xs font-mono uppercase tracking-widest text-accent mb-3">Project structure</p>
-            <h2 className="text-3xl font-bold tracking-tight mb-6 text-balance">
-              Ready to fork &amp; extend.
+            <p className="mb-3 text-xs font-mono uppercase tracking-widest text-accent">Project structure</p>
+            <h2 className="mb-6 text-3xl font-bold tracking-tight text-balance">
+              Organized around the product experience.
             </h2>
-            <div className="panel-sunken p-4 font-mono text-sm space-y-1.5">
-              {folders.map((f) => (
-                <div key={f} className="flex items-center gap-2 text-foreground/80">
-                  <ArrowRight className="w-3 h-3 text-accent shrink-0" />
-                  <span>{f}</span>
+            <div className="panel-sunken space-y-1.5 p-4 font-mono text-sm">
+              {folders.map((folder) => (
+                <div key={folder} className="flex items-center gap-2 text-foreground/80">
+                  <ArrowRight className="h-3 w-3 shrink-0 text-accent" />
+                  <span>{folder}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 panel p-4 text-sm text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">Hardware-ready.</strong> The ingest API accepts POST requests
-              from any device. Drop in your Raspberry Pi script, Arduino, or mobile app and start streaming
-              events to the dashboard within minutes.
+            <div className="panel mt-6 p-4 text-sm leading-relaxed text-muted-foreground">
+              <strong className="text-foreground">Cloud-backed tutoring.</strong> The child speaks to a local
+              voice device while SANbox handles transcription, moderation, tutoring responses, and
+              parent-facing summaries in the Next.js app.
             </div>
           </div>
         </div>

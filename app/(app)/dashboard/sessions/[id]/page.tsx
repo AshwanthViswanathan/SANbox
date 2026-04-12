@@ -26,14 +26,14 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   ).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title={`Session ${id}`}
         description={`Review the turn-by-turn timeline, safeguard labels, and lesson context for this conversation.`}
         badge={summary.flagged_count > 0 ? 'REVIEW' : 'CLEAR'}
       />
 
-      <section className="grid gap-4 xl:grid-cols-[1.5fr_0.8fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
             <SessionMetaCard label="Device" value={summary.device_id} />
@@ -41,24 +41,29 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             <SessionMetaCard label="Last turn" value={formatDateTime(summary.last_turn_at)} />
           </div>
 
-          <div className="panel overflow-hidden">
-            <div className="border-b border-border px-4 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Session timeline</p>
-                <ModeBadge mode={summary.mode} />
-                {flaggedTurns > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-destructive">
-                    <ShieldAlert className="h-3 w-3" />
-                    {flaggedTurns} FLAGGED TURN{flaggedTurns > 1 ? 'S' : ''}
-                  </span>
-                )}
+          <div className="stitch-panel overflow-hidden p-2">
+            <div className="rounded-[1.5rem] bg-white/70 px-5 py-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="stitch-label text-primary">Conversation log</p>
+                  <p className="stitch-heading mt-2 text-2xl">Child and San</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ModeBadge mode={summary.mode} />
+                  {flaggedTurns > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] text-destructive">
+                      <ShieldAlert className="h-3 w-3" />
+                      {flaggedTurns} FLAGGED TURN{flaggedTurns > 1 ? 'S' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Child transcript and the SANbox reply are paired in order of playback.
               </p>
             </div>
 
-            <div className="space-y-6 px-4 py-5 md:px-5">
+            <div className="space-y-6 bg-surface-container-low/40 px-6 py-6 md:px-8">
               {detail.turns.map((turn, index) => {
                 const blocked = turn.blocked
 
@@ -79,7 +84,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                             <p className="text-xs text-muted-foreground">{formatTime(turn.created_at)}</p>
                             <SafeguardBadge label={turn.input_label} />
                           </div>
-                          <div className="mt-2 rounded-[1.25rem] rounded-tl-sm border border-border bg-white px-4 py-3 text-sm leading-6 text-foreground shadow-sm">
+                          <div className="mt-2 rounded-l-[2rem] rounded-br-[2rem] border border-[color:rgba(178,173,154,0.18)] bg-white px-5 py-4 text-sm leading-7 text-foreground shadow-sm">
                             {turn.transcript}
                           </div>
                         </div>
@@ -106,10 +111,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                             )}
                           </div>
                           <div
-                            className={`mt-2 rounded-[1.25rem] rounded-tl-sm border px-4 py-3 text-sm leading-6 shadow-sm ${
+                            className={`mt-2 rounded-r-[2rem] rounded-bl-[2rem] border px-5 py-4 text-sm leading-7 shadow-sm ${
                               blocked
                                 ? 'border-destructive/25 bg-destructive/5 text-foreground'
-                                : 'border-border bg-[rgba(228,244,245,0.38)] text-foreground'
+                                : 'border-primary-container/25 bg-primary-container/50 text-on-primary-container'
                             }`}
                           >
                             {turn.assistant_text}
@@ -129,8 +134,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="space-y-4">
-          <div className="panel p-4">
-            <p className="text-sm font-semibold text-foreground">Session context</p>
+          <div className="stitch-card p-5">
+            <p className="stitch-label">Session context</p>
             <div className="mt-4 space-y-3">
               <ContextRow label="Mode" value={summary.mode === 'lesson' ? 'Lesson mode' : 'Free chat'} />
               <ContextRow label="Turns" value={String(summary.turn_count)} />
@@ -139,10 +144,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
 
-          <div className="panel p-4">
-            <p className="text-sm font-semibold text-foreground">Lesson status</p>
+          <div className="stitch-card p-5">
+            <p className="stitch-label">Lesson status</p>
             {lesson ? (
-              <div className="mt-4 rounded-[1.25rem] border border-border bg-muted/35 p-4">
+              <div className="mt-4 rounded-[1.5rem] bg-surface-container-low px-4 py-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-foreground">{lesson.title}</p>
                   <span className="rounded-full bg-accent/12 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-accent">
@@ -161,13 +166,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          <div className="panel p-4">
-            <p className="text-sm font-semibold text-foreground">Review notes</p>
+          <div className="stitch-card p-5">
+            <p className="stitch-label">Review notes</p>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <li className="rounded-2xl bg-muted/35 px-3 py-3">
+              <li className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
                 Parent review is centered on child transcript, assistant reply, and safeguard labels.
               </li>
-              <li className="rounded-2xl bg-muted/35 px-3 py-3">
+              <li className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
                 Blocked turns return a warm fallback and remain visibly marked in the session history.
               </li>
             </ul>
@@ -180,8 +185,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
 function SessionMetaCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="panel px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <div className="stitch-card px-4 py-4">
+      <p className="stitch-label">{label}</p>
       <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
@@ -189,8 +194,8 @@ function SessionMetaCard({ label, value }: { label: string; value: string }) {
 
 function ContextRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <div className="flex items-start justify-between gap-3 rounded-[1.25rem] bg-surface-container-low px-4 py-4">
+      <p className="stitch-label">{label}</p>
       <p className="text-right text-sm font-semibold text-foreground">{value}</p>
     </div>
   )

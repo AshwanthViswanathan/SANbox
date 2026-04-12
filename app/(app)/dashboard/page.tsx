@@ -53,66 +53,60 @@ export default async function DashboardOverview() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="SANbox Dashboard"
         description="Dive into your child's learning sessions, review flagged turns, and keep an eye on lesson use."
         badge="DEMO READY"
       />
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-border bg-[linear-gradient(135deg,rgba(255,251,245,0.95),rgba(233,249,247,0.95),rgba(224,242,254,0.85))]">
+      <section className="stitch-panel overflow-hidden p-2">
         <div className="grid gap-5 px-5 py-5 md:grid-cols-[1.7fr_1fr] md:px-6 md:py-6">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.2em] text-primary">
-              <span className="h-2 w-2 rounded-full bg-accent" />
-              Shoreline review
+            <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
+              Monitoring hub
             </div>
             <div className="space-y-2">
-              <h2 className="max-w-2xl text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                One calm shore to review what your child heard, asked, and learned.
+              <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
+                Explore the shoreline of your child's latest sessions.
               </h2>
-              <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-[15px]">
-                Track every learning wave, spot rough-water moments quickly, and keep device health simple
-                enough for a live demo.
+              <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+                The dashboard stays sessions-first: recent activity, safety review, device health, and
+                lesson progress are all visible in one calm monitoring surface.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
-                <Link href="/dashboard/sessions?filter=flagged">Review tide checks</Link>
+                <Link href="/dashboard/sessions">Open sessions</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/dashboard/lessons">Browse lesson dives</Link>
+                <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
               </Button>
             </div>
           </div>
 
-          <div className="rounded-[1.25rem] border border-white/60 bg-white/80 p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">Today at a glance</p>
-              <Clock3 className="h-4 w-4 text-muted-foreground" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="stitch-card p-6">
+              <div className="stitch-label">Weekly activity</div>
+              <div className="mt-2 flex items-center gap-3">
+                <MessageSquareText className="h-5 w-5 text-primary" />
+                <p className="stitch-heading text-3xl text-primary">{stats.totalTurns}</p>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Total captured turns across all sessions.</p>
             </div>
-            <div className="mt-4 space-y-3">
-              {sessions.slice(0, 3).map((session) => (
-                <Link
-                  key={session.session_id}
-                  href={`/dashboard/sessions/${session.session_id}`}
-                  className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/80 px-3 py-3 transition-colors hover:border-accent/40 hover:bg-white"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{session.device_id}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatTime(session.last_turn_at)} - {session.turn_count} turns
-                    </p>
-                  </div>
-                  <ModeBadge mode={session.mode} />
-                </Link>
-              ))}
+            <div className="stitch-card p-6">
+              <div className="stitch-label">Safety flags</div>
+              <div className="mt-2 flex items-center gap-3">
+                <ShieldAlert className="h-5 w-5 text-tertiary" />
+                <p className="stitch-heading text-3xl text-tertiary">{stats.flaggedTurns}</p>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Moments that currently need parent review.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => {
           const Icon = stat.icon
 
@@ -120,31 +114,31 @@ export default async function DashboardOverview() {
             <Link
               key={stat.label}
               href={stat.href}
-              className="panel group px-4 py-4 transition-colors hover:border-accent/40"
+              className="stitch-card group px-5 py-5 transition-all hover:-translate-y-1"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                  <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stat.value}</p>
+                  <p className="stitch-label">{stat.label}</p>
+                  <p className="stitch-heading mt-3 text-3xl">{stat.value}</p>
                 </div>
-                <span className="rounded-2xl bg-accent/10 p-2 text-accent transition-transform group-hover:-translate-y-0.5">
+                <span className="rounded-full bg-primary-container/20 p-3 text-primary transition-transform group-hover:-translate-y-0.5">
                   <Icon className="h-4 w-4" />
                 </span>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{stat.sub}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{stat.sub}</p>
             </Link>
           )
         })}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <div className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="stitch-panel overflow-hidden p-2">
+          <div className="flex items-center justify-between px-5 py-5">
             <div>
-              <p className="text-sm font-semibold text-foreground">Recent sessions</p>
-              <p className="text-xs text-muted-foreground">Latest shoreline activity across lesson mode and free chat.</p>
+              <p className="stitch-label">Session history</p>
+              <p className="stitch-heading mt-2 text-2xl">Recent sessions</p>
             </div>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/dashboard/sessions" className="gap-1">
                 All sessions
                 <ArrowRight className="h-3 w-3" />
@@ -152,12 +146,12 @@ export default async function DashboardOverview() {
             </Button>
           </div>
 
-          <div className="divide-y divide-border">
+          <div className="space-y-3 px-4 pb-4">
             {sessions.slice(0, 5).map((session) => (
               <Link
                 key={session.session_id}
                 href={`/dashboard/sessions/${session.session_id}`}
-                className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/35 md:grid-cols-[1.2fr_0.8fr_auto]"
+                className="stitch-card grid gap-4 px-5 py-5 transition-all hover:-translate-y-0.5 md:grid-cols-[1.1fr_0.8fr_auto]"
               >
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -181,13 +175,13 @@ export default async function DashboardOverview() {
           </div>
         </div>
 
-        <div className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border bg-destructive/5 px-4 py-3">
+        <div className="stitch-panel overflow-hidden p-2">
+          <div className="flex items-center justify-between rounded-[1.5rem] bg-tertiary-container/18 px-5 py-5">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-destructive" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Flagged queue</p>
-                <p className="text-xs text-muted-foreground">Borderline and blocked moments that need extra context.</p>
+                <p className="stitch-label text-tertiary">Safety review</p>
+                <p className="stitch-heading mt-1 text-2xl">Flagged queue</p>
               </div>
             </div>
           </div>
@@ -199,12 +193,12 @@ export default async function DashboardOverview() {
               description="Everything in the current demo sessions passed through cleanly."
             />
           ) : (
-            <div className="divide-y divide-border">
+            <div className="space-y-3 px-4 py-4">
               {flaggedTurns.slice(0, 4).map(({ sessionId, deviceId, mode, turn }) => (
                 <Link
                   key={turn.turn_id}
                   href={`/dashboard/sessions/${sessionId}`}
-                  className="block px-4 py-4 transition-colors hover:bg-muted/35"
+                  className="stitch-card block px-5 py-5 transition-all hover:-translate-y-0.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">

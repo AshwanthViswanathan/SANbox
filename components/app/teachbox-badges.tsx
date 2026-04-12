@@ -14,7 +14,7 @@ export function SafeguardBadge({
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-emerald-700',
+          'inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] text-emerald-700',
           className
         )}
       >
@@ -28,7 +28,7 @@ export function SafeguardBadge({
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1 rounded-full bg-amber-500/12 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700',
+          'inline-flex items-center gap-1 rounded-full bg-amber-500/12 px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] text-amber-700',
           className
         )}
       >
@@ -41,7 +41,7 @@ export function SafeguardBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-destructive',
+        'inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] text-destructive',
         className
       )}
     >
@@ -64,6 +64,7 @@ export function ModeBadge({
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold tracking-[0.18em]',
+        'px-3 py-1.5',
         isLesson
           ? 'bg-accent/12 text-accent'
           : 'bg-sky-500/12 text-sky-700',

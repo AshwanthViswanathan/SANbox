@@ -7,17 +7,17 @@ import { Button } from '@/components/ui/button'
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden px-0 pb-20 pt-28">
-      <div className="absolute inset-0 beach-shell" />
-      <div className="wave-grid absolute inset-0 opacity-50" />
-      <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(255,244,214,0.7))]" />
+    <section className="relative min-h-[100svh] overflow-hidden px-0 pt-24">
+      <div className="absolute inset-0 stitch-shell" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.72),transparent_34%),linear-gradient(180deg,rgba(255,248,231,0.08),rgba(255,248,231,0.6))]" />
+      <div className="wave-grid absolute inset-0 opacity-30" />
+      <div className="pointer-events-none absolute -left-24 top-28 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-primary/16 blur-3xl" />
 
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid items-end gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative isolate pb-4">
-            <div className="pointer-events-none absolute inset-x-[-2rem] inset-y-[-1.5rem] -z-10 overflow-hidden rounded-[2rem] opacity-80">
+      <div className="relative mx-auto flex min-h-[calc(100svh-6rem)] max-w-7xl items-center px-4 pb-16 sm:px-6">
+        <div className="grid w-full items-end gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative isolate py-8 lg:py-14">
+            <div className="pointer-events-none absolute inset-x-[-2rem] inset-y-[-1rem] -z-10 overflow-hidden rounded-[2.5rem] opacity-90">
               <Image
                 src={shorelineImage}
                 alt=""
@@ -25,23 +25,22 @@ export function Hero() {
                 priority
                 className="object-cover object-center"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,243,0.96),rgba(255,250,243,0.9),rgba(255,250,243,0.58))]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.97),rgba(252,247,225,0.88),rgba(252,247,225,0.34))]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_30%)]" />
             </div>
 
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/75 px-4 py-2 text-xs font-mono uppercase tracking-[0.2em] text-primary shadow-sm">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
-              Beach-themed voice companion for curious kids
+              Voice-first learning for curious kids
             </div>
 
             <p className="font-beach-accent text-lg font-semibold tracking-[0.08em] text-primary">Meet San</p>
-            <h1 className="font-beach-display mt-3 max-w-3xl text-5xl font-bold leading-[0.95] tracking-tight text-balance text-foreground sm:text-6xl md:text-7xl">
-              SANbox turns every question into a calm shoreline lesson.
+            <h1 className="font-beach-display mt-3 max-w-3xl text-5xl font-bold leading-[0.92] tracking-tight text-balance text-foreground sm:text-6xl md:text-7xl">
+              SANbox gives kids a calm voice guide and parents a clear session trail.
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-              San guides kids through safe voice conversations, short lesson dives, and playful beach-side
-              explanations while parents keep a clear view of each session.
+            <p className="mt-6 max-w-xl text-base leading-7 text-foreground/72 sm:text-lg">
+              Ask a question, hear a grounded answer, and keep every lesson turn reviewable. The experience stays playful for children and legible for adults.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -56,30 +55,32 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
+            <div className="mt-12 grid max-w-2xl gap-4 sm:grid-cols-3">
               {[
                 { icon: <Mic className="h-4 w-4" />, label: 'Button-to-talk learning chats' },
                 { icon: <ShieldAlert className="h-4 w-4" />, label: 'Safe replies with parent review' },
-                { icon: <LifeBuoy className="h-4 w-4" />, label: 'San keeps the lesson on course' },
+                { icon: <LifeBuoy className="h-4 w-4" />, label: 'A guided voice companion named San' },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="text-primary">{item.icon}</span>
-                  {item.label}
+                <div key={item.label} className="rounded-[1.5rem] border border-white/55 bg-white/52 px-4 py-4 text-sm text-muted-foreground backdrop-blur-sm">
+                  <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    {item.icon}
+                  </span>
+                  <p className="leading-6">{item.label}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="relative lg:pl-6">
-            <div className="beach-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border/70 bg-white/60 px-5 py-4">
+            <div className="stitch-panel overflow-hidden p-2">
+              <div className="flex items-center justify-between rounded-[1.5rem] bg-white/72 px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">SANbox family dashboard</p>
-                  <p className="text-xs text-muted-foreground">Dive into recent sessions, lessons, and device health.</p>
+                  <p className="text-xs text-muted-foreground">A stitched view of sessions, safeguards, and device health.</p>
                 </div>
                 <div className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-secondary-foreground">
                   <Waves className="h-3 w-3" />
-                  Live tide
+                  Live session
                 </div>
               </div>
               <DashboardPreview />
@@ -93,15 +94,15 @@ export function Hero() {
 
 function DashboardPreview() {
   return (
-    <div className="grid min-h-[420px] grid-cols-[200px_1fr] gap-4 bg-[linear-gradient(180deg,rgba(241,252,250,0.92),rgba(255,248,238,0.94))] p-4 text-sidebar-foreground">
-      <div className="flex flex-col gap-1">
-        <div className="mb-1 px-2 py-1.5 text-[11px] font-mono uppercase tracking-widest text-sidebar-foreground/40">
+    <div className="grid min-h-[440px] grid-cols-[200px_1fr] gap-4 bg-[linear-gradient(180deg,rgba(247,241,217,0.54),rgba(241,252,250,0.82))] p-4 text-sidebar-foreground">
+      <div className="stitch-card flex flex-col gap-1 px-3 py-4">
+        <div className="mb-2 px-2 py-1.5 text-[11px] font-mono uppercase tracking-widest text-sidebar-foreground/40">
           Family cove
         </div>
         {['Beach overview', 'Sessions', 'Lessons', 'Devices', 'Safeguards', 'Settings'].map((item, i) => (
           <div
             key={item}
-            className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm ${
+            className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${
               i === 0
                 ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
                 : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60'
@@ -114,9 +115,9 @@ function DashboardPreview() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="stitch-card flex items-center justify-between px-4 py-4">
           <div>
-            <div className="text-sm font-semibold text-sidebar-foreground">Shoreline overview</div>
+            <div className="text-sm font-semibold text-sidebar-foreground">Session history</div>
             <div className="font-mono text-xs text-sidebar-foreground/50">family / sanbox-home</div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -132,14 +133,14 @@ function DashboardPreview() {
             { label: 'Safe turns', value: '98%' },
             { label: 'Tide checks', value: '1' },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-xl bg-white/55 p-3">
+            <div key={stat.label} className="stitch-card rounded-[1.3rem] p-3">
               <div className="text-xs text-sidebar-foreground/50">{stat.label}</div>
               <div className="font-mono text-lg font-bold text-sidebar-foreground">{stat.value}</div>
             </div>
           ))}
         </div>
 
-        <div className="flex-1 space-y-0.5 rounded-2xl bg-[rgba(17,24,39,0.78)] p-3 font-mono text-[11px] leading-relaxed">
+        <div className="flex-1 space-y-0.5 rounded-[1.75rem] bg-[rgba(17,24,39,0.78)] p-4 font-mono text-[11px] leading-relaxed">
           {[
             { t: '10:42:01', msg: 'device/pi-001        -> listening for a shoreline question', c: 'text-sky-300' },
             { t: '10:42:03', msg: 'cloud/safeguard      <- input marked SAFE', c: 'text-slate-300' },

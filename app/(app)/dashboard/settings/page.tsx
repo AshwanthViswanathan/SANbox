@@ -8,9 +8,9 @@ import { Settings, Key, Bell, Plug } from 'lucide-react'
 
 function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="panel overflow-hidden">
+    <div className="stitch-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="stitch-heading text-xl">{title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       <div className="px-5 py-4 space-y-4">{children}</div>
@@ -35,7 +35,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="Settings" description="Manage your SANbox family workspace and integrations." />
 
-      <div className="space-y-4 max-w-2xl">
+      <div className="max-w-3xl space-y-5">
         {/* Profile */}
         <Section
           title="Workspace"

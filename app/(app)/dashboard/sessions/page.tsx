@@ -39,14 +39,33 @@ export default async function SessionsPage({
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Sessions"
         description="Every SANbox conversation, with mode, timing, device, and safeguard visibility."
         badge={activeFilter === 'all' ? undefined : FILTER_BADGES[activeFilter]}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <section className="stitch-panel p-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="stitch-label text-tertiary">Monitoring hub</p>
+            <h2 className="stitch-heading mt-2 text-4xl">Explore the shoreline</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="stitch-card border-l-4 border-l-primary px-5 py-5">
+              <p className="stitch-label">Weekly activity</p>
+              <p className="stitch-heading mt-2 text-3xl text-primary">{sessions.reduce((sum, s) => sum + s.turn_count, 0)} Turns</p>
+            </div>
+            <div className="stitch-card border-l-4 border-l-tertiary px-5 py-5">
+              <p className="stitch-label">Safety flags</p>
+              <p className="stitch-heading mt-2 text-3xl text-tertiary">{sessions.filter((s) => s.flagged_count > 0).length} Flags</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap gap-3">
         {filters.map((item) => {
           const isActive = item.key === activeFilter
           const href = item.key === 'all' ? '/dashboard/sessions' : `/dashboard/sessions?filter=${item.key}`
@@ -57,7 +76,7 @@ export default async function SessionsPage({
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               asChild
-              className="rounded-full"
+              className="min-w-fit"
             >
               <Link href={href}>
                 {item.label}
@@ -71,7 +90,7 @@ export default async function SessionsPage({
       </div>
 
       {filteredSessions.length === 0 ? (
-        <div className="panel">
+        <div className="stitch-panel">
           <EmptyState
             icon={<Clock3 className="h-5 w-5" />}
             title="No sessions in this view"
@@ -79,9 +98,9 @@ export default async function SessionsPage({
           />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredSessions.map((session) => (
-            <article key={session.session_id} className="panel overflow-hidden">
+            <article key={session.session_id} className="stitch-card overflow-hidden px-5 py-5">
               <div className="grid gap-4 px-4 py-4 lg:grid-cols-[1.1fr_1fr_auto] lg:px-5">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">

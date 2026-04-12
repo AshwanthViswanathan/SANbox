@@ -11,18 +11,18 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, action, className, badge }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-start justify-between gap-4 mb-6', className)}>
+    <div className={cn('mb-8 flex items-start justify-between gap-4', className)}>
       <div>
-        <div className="flex items-center gap-2 mb-0.5">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{title}</h1>
+        <div className="mb-1 flex items-center gap-3">
+          <h1 className="stitch-heading text-3xl sm:text-4xl">{title}</h1>
           {badge && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-accent/15 text-accent border border-accent/25">
+            <span className="stitch-pill bg-primary-container/20 text-primary">
               {badge}
             </span>
           )}
         </div>
         {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
