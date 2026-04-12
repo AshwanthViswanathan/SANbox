@@ -14,7 +14,7 @@ export default async function DevicesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Device Status"
-        description="Thin-client Raspberry Pi devices with simple connection, parent controls, and session visibility for the demo."
+        description="Voice devices with simple connection, parent controls, and session visibility for the SANbox demo."
         badge={`${onlineDevices}/${devices.length} ONLINE`}
       />
 
@@ -30,7 +30,7 @@ export default async function DevicesPage() {
       <div className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,244,245,0.78))] px-5 py-4">
         <p className="text-sm font-semibold text-foreground">Parent pause and power controls</p>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          This adds a safe demo control in the dashboard without changing the existing parent session
+          This adds a safe shoreline control in the dashboard without changing the existing parent session
           routes, lessons route, or the child turn endpoint. The control state is local to the parent UI
           until a dedicated device-command API exists.
         </p>

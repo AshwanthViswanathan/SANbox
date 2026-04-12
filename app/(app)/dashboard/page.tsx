@@ -30,14 +30,14 @@ export default async function DashboardOverview() {
       href: '/dashboard/sessions',
     },
     {
-      label: 'Needs review',
+      label: 'Tide checks',
       value: String(stats.flaggedTurns),
       sub: 'Flagged child-safe moments',
       icon: ShieldAlert,
       href: '/dashboard/sessions?filter=flagged',
     },
     {
-      label: 'Lesson sessions',
+      label: 'Lesson dives',
       value: String(stats.lessonSessions),
       sub: 'Structured learning runs',
       icon: BookOpen,
@@ -46,7 +46,7 @@ export default async function DashboardOverview() {
     {
       label: 'Devices online',
       value: `${stats.activeDevices}/${devices.length}`,
-      sub: 'Current device pulse',
+      sub: 'Current shoreline pulse',
       icon: Cpu,
       href: '/dashboard/devices',
     },
@@ -55,33 +55,33 @@ export default async function DashboardOverview() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Family Dashboard"
-        description="Scan recent TeachBox activity, review flagged turns, and keep an eye on lesson use."
+        title="SANbox Dashboard"
+        description="Dive into your child's learning sessions, review flagged turns, and keep an eye on lesson use."
         badge="DEMO READY"
       />
 
-      <section className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(228,244,245,0.95))]">
+      <section className="overflow-hidden rounded-[1.75rem] border border-border bg-[linear-gradient(135deg,rgba(255,251,245,0.95),rgba(233,249,247,0.95),rgba(224,242,254,0.85))]">
         <div className="grid gap-5 px-5 py-5 md:grid-cols-[1.7fr_1fr] md:px-6 md:py-6">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.2em] text-primary">
               <span className="h-2 w-2 rounded-full bg-accent" />
-              Parent review
+              Shoreline review
             </div>
             <div className="space-y-2">
               <h2 className="max-w-2xl text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                One calm place to review what your child heard, asked, and learned.
+                One calm shore to review what your child heard, asked, and learned.
               </h2>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-[15px]">
-                Sessions stay visible, safeguard moments are easy to spot, and device health stays simple
+                Track every learning wave, spot rough-water moments quickly, and keep device health simple
                 enough for a live demo.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
-                <Link href="/dashboard/sessions?filter=flagged">Review flagged turns</Link>
+                <Link href="/dashboard/sessions?filter=flagged">Review tide checks</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/dashboard/lessons">Browse lessons</Link>
+                <Link href="/dashboard/lessons">Browse lesson dives</Link>
               </Button>
             </div>
           </div>
@@ -142,7 +142,7 @@ export default async function DashboardOverview() {
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-foreground">Recent sessions</p>
-              <p className="text-xs text-muted-foreground">Latest device activity across lesson mode and free chat.</p>
+              <p className="text-xs text-muted-foreground">Latest shoreline activity across lesson mode and free chat.</p>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/dashboard/sessions" className="gap-1">
@@ -187,7 +187,7 @@ export default async function DashboardOverview() {
               <ShieldAlert className="h-4 w-4 text-destructive" />
               <div>
                 <p className="text-sm font-semibold text-foreground">Flagged queue</p>
-                <p className="text-xs text-muted-foreground">Borderline and blocked moments that need context review.</p>
+                <p className="text-xs text-muted-foreground">Borderline and blocked moments that need extra context.</p>
               </div>
             </div>
           </div>

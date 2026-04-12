@@ -12,7 +12,7 @@ export default async function LessonsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Lessons"
-        description="Markdown-backed lesson modules available to the TeachBox parent dashboard."
+        description="Markdown-backed lesson modules available to the SANbox parent dashboard."
         badge={`${activeLessons}/${lessons.length} ACTIVE`}
       />
 
@@ -72,7 +72,7 @@ export default async function LessonsPage() {
 
                 <p className="text-sm leading-6 text-muted-foreground">
                   Parents can confirm that the lesson exists, see which grade band it targets, and verify that the session
-                  really ran in lesson mode instead of free chat.
+                  really ran as a guided lesson dive instead of free chat.
                 </p>
               </div>
             </article>

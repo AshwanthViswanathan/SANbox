@@ -33,7 +33,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export default function SettingsPage() {
   return (
     <div>
-      <PageHeader title="Settings" description="Manage your workspace and integrations" />
+      <PageHeader title="Settings" description="Manage your SANbox family workspace and integrations." />
 
       <div className="space-y-4 max-w-2xl">
         {/* Profile */}

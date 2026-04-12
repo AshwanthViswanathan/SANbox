@@ -1,67 +1,65 @@
-import { Bot, Radio, ListChecks, Layers, ShieldCheck, Plug } from 'lucide-react'
+import { BookOpen, LifeBuoy, Mic, Radio, ShieldAlert, ShieldCheck } from 'lucide-react'
 
 const features = [
   {
-    icon: <Bot className="w-5 h-5" />,
-    title: 'Agent Registry',
+    icon: <ShieldAlert className="h-5 w-5" />,
+    title: 'SANbox Dashboard',
     description:
-      'Define, deploy, and monitor AI agents. Each agent has its own config, run history, and log stream. Swap models without changing your app logic.',
+      'Review recent sessions, scan flagged moments, and follow clear summaries of what a child asked, heard, and learned.',
   },
   {
-    icon: <ListChecks className="w-5 h-5" />,
-    title: 'Task & Run Queue',
+    icon: <BookOpen className="h-5 w-5" />,
+    title: 'Guided lesson dives',
     description:
-      'Trigger runs manually or on a schedule. Track status, retries, duration, and outputs in a structured run log built for fast inspection.',
+      'Markdown-backed lesson modules let San guide subject-specific practice in reading, math, science, and other K-5 topics.',
   },
   {
-    icon: <Radio className="w-5 h-5" />,
-    title: 'Device Ingest API',
+    icon: <Radio className="h-5 w-5" />,
+    title: 'Fast voice replies',
     description:
-      'POST structured events from a Raspberry Pi, embedded sensor, or any HTTP client. Built-in webhook endpoint with auth-token validation.',
+      'Speech-to-text, tutoring responses, and text-to-speech work together so children can ask questions and hear answers naturally.',
   },
   {
-    icon: <Layers className="w-5 h-5" />,
-    title: 'Event Log',
+    icon: <Mic className="h-5 w-5" />,
+    title: 'Simple voice-first flow',
     description:
-      'A unified, real-time event stream across all agents and devices. Filter by source, severity, or time range. Ready to wire to Supabase Realtime.',
+      'Button-to-talk audio capture keeps the interaction simple for young students while preserving clear turn-by-turn transcripts for review.',
   },
   {
-    icon: <ShieldCheck className="w-5 h-5" />,
-    title: 'Supabase Auth',
+    icon: <ShieldCheck className="h-5 w-5" />,
+    title: 'Built-in safeguards',
     description:
-      'Sign-in / sign-up UI with clear TODO markers for Supabase Auth wiring. Row-level security scaffolding included so you ship secure from day one.',
+      'Each child input and assistant response can be labeled, flagged, and surfaced to parents when something needs a closer look.',
   },
   {
-    icon: <Plug className="w-5 h-5" />,
-    title: 'Integration Slots',
+    icon: <LifeBuoy className="h-5 w-5" />,
+    title: 'A beach guide with guardrails',
     description:
-      'Pre-wired slots for external services: Slack notifications, webhook subscribers, API key management. Extend in minutes, not hours.',
+      'San stays warm and playful for kids while the existing backend keeps moderation, lesson routing, and parent visibility stable.',
   },
 ]
 
 export function Features() {
   return (
-    <section id="features" className="py-20 border-t border-border">
+    <section id="features" className="border-t border-border/70 py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Section header */}
         <div className="mb-12">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent mb-3">Platform features</p>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-balance leading-snug">
-            Everything you need.
+          <p className="mb-3 text-xs font-mono uppercase tracking-widest text-primary">What SANbox includes</p>
+          <h2 className="font-beach-display text-3xl font-bold leading-snug tracking-tight text-balance sm:text-4xl">
+            A calm beach theme over the same reliable learning stack,
             <br />
-            <span className="text-muted-foreground font-normal">Nothing you don&apos;t.</span>
+            <span className="font-normal text-muted-foreground">designed for real family use.</span>
           </h2>
         </div>
 
-        {/* Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden">
-          {features.map((f) => (
-            <div key={f.title} className="bg-background p-6 flex flex-col gap-3">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10 text-accent border border-accent/20 shrink-0">
-                {f.icon}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => (
+            <div key={feature.title} className="beach-card flex flex-col gap-3 p-6">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+                {feature.icon}
               </div>
-              <h3 className="font-semibold text-foreground">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
+              <h3 className="font-semibold text-foreground">{feature.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
             </div>
           ))}
         </div>

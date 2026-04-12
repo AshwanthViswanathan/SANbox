@@ -4,63 +4,66 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Warm, calm, trustworthy educational palette */
-  /* Soft cream / warm off-white background */
-  --background: oklch(0.98 0.01 85);
-  --foreground: oklch(0.2 0.04 260); /* Deep ink / navy text */
-  --card: oklch(1 0 0); /* Pure white cards */
+  /* BeachBox coastal palette */
+  --background: oklch(0.985 0.008 85);
+  --foreground: oklch(0.26 0.07 244);
+  --card: oklch(0.995 0.004 90);
   --card-foreground: oklch(0.2 0.04 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.04 260);
-  
-  --primary: oklch(0.2 0.04 260); /* Deep ink */
-  --primary-foreground: oklch(0.98 0.01 85);
-  
-  --secondary: oklch(0.94 0.02 85); /* Slightly darker warm cream */
-  --secondary-foreground: oklch(0.2 0.04 260);
-  
-  --muted: oklch(0.94 0.02 85);
-  --muted-foreground: oklch(0.5 0.03 260);
-  
-  --accent: oklch(0.65 0.12 200); /* Teal / sky accent */
-  --accent-foreground: oklch(0.98 0.01 85);
-  
-  --destructive: oklch(0.6 0.15 25); /* Gentle red */
+
+  --primary: oklch(0.68 0.14 234);
+  --primary-foreground: oklch(0.99 0.003 95);
+
+  --secondary: oklch(0.94 0.04 105);
+  --secondary-foreground: oklch(0.3 0.05 240);
+
+  --muted: oklch(0.955 0.016 180);
+  --muted-foreground: oklch(0.53 0.05 235);
+
+  --accent: oklch(0.76 0.16 14);
+  --accent-foreground: oklch(0.99 0.004 95);
+
+  --destructive: oklch(0.67 0.19 18);
   --destructive-foreground: oklch(0.98 0.01 85);
-  
-  --border: oklch(0.9 0.02 85);
-  --input: oklch(0.9 0.02 85);
-  --ring: oklch(0.65 0.12 200); /* Teal ring */
-  
-  --chart-1: oklch(0.65 0.12 200); /* Teal */
-  --chart-2: oklch(0.8 0.15 80); /* Warm gold */
-  --chart-3: oklch(0.6 0.15 25); /* Gentle red */
-  --chart-4: oklch(0.7 0.1 260); /* Soft blue */
-  --chart-5: oklch(0.8 0.1 140); /* Soft green */
-  
-  --radius: 0.75rem; /* Softer, rounder corners */
-  
-  /* Sidebar */
-  --sidebar: oklch(0.98 0.01 85); /* Warm cream sidebar */
+
+  --border: oklch(0.91 0.022 220);
+  --input: oklch(0.91 0.022 220);
+  --ring: oklch(0.68 0.14 234);
+
+  --chart-1: oklch(0.68 0.14 234);
+  --chart-2: oklch(0.82 0.16 85);
+  --chart-3: oklch(0.76 0.16 14);
+  --chart-4: oklch(0.74 0.1 190);
+  --chart-5: oklch(0.78 0.11 145);
+
+  --radius: 0.9rem;
+
+  --sidebar: oklch(0.96 0.02 185);
   --sidebar-foreground: oklch(0.2 0.04 260);
-  --sidebar-primary: oklch(0.65 0.12 200);
+  --sidebar-primary: oklch(0.68 0.14 234);
   --sidebar-primary-foreground: oklch(0.98 0.01 85);
-  --sidebar-accent: oklch(0.94 0.02 85);
+  --sidebar-accent: oklch(0.92 0.03 190);
   --sidebar-accent-foreground: oklch(0.2 0.04 260);
-  --sidebar-border: oklch(0.9 0.02 85);
-  --sidebar-ring: oklch(0.65 0.12 200);
-  
-  /* Custom tokens */
-  --surface: oklch(0.96 0.015 85);
-  --surface-raised: oklch(1 0 0);
-  --surface-sunken: oklch(0.94 0.02 85);
-  --accent-glow: oklch(0.65 0.12 200 / 0.15);
-  --gold-highlight: oklch(0.8 0.15 80);
+  --sidebar-border: oklch(0.87 0.03 200);
+  --sidebar-ring: oklch(0.68 0.14 234);
+
+  --surface: oklch(0.97 0.012 88);
+  --surface-raised: oklch(0.995 0.004 95);
+  --surface-sunken: oklch(0.94 0.025 190);
+  --accent-glow: oklch(0.76 0.16 14 / 0.18);
+  --gold-highlight: oklch(0.85 0.16 90);
+  --seafoam: oklch(0.9 0.05 185);
+  --ocean-deep: oklch(0.51 0.13 240);
 }
 
 @theme inline {
   --font-sans:
     'Nunito', 'Aptos', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display:
+    'Arial Rounded MT Bold', 'Trebuchet MS', 'Gill Sans', 'Aptos', 'Segoe UI', sans-serif;
+  --font-accent:
+    'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive;
   --font-mono:
     'JetBrains Mono', 'SFMono-Regular', 'SF Mono', 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
   --color-background: var(--background);
@@ -107,13 +110,18 @@
     @apply border-border outline-ring/50;
   }
   body {
+    background:
+      radial-gradient(circle at top, rgba(14, 165, 233, 0.14), transparent 32%),
+      linear-gradient(180deg, rgba(255, 248, 235, 0.92), rgba(243, 252, 250, 0.96));
     @apply bg-background text-foreground;
   }
 }
 
 @layer utilities {
   .panel {
-    @apply bg-card border border-border rounded-xl shadow-sm;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 251, 245, 0.96));
+    @apply border border-border rounded-xl shadow-sm;
   }
   .panel-sunken {
     background-color: var(--surface-sunken);
@@ -124,5 +132,29 @@
   }
   .mono {
     @apply font-mono text-sm;
+  }
+  .beach-shell {
+    background:
+      radial-gradient(circle at top left, rgba(251, 113, 133, 0.18), transparent 26%),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 24%),
+      linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(236, 249, 247, 0.88));
+  }
+  .wave-grid {
+    background-image:
+      linear-gradient(to right, rgba(14, 165, 233, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(14, 165, 233, 0.08) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .beach-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 252, 251, 0.94));
+    box-shadow: 0 24px 80px rgba(14, 165, 233, 0.08);
+    @apply border border-white/70 rounded-[1.5rem];
+  }
+  .font-beach-display {
+    font-family: var(--font-display);
+  }
+  .font-beach-accent {
+    font-family: var(--font-accent);
   }
 }

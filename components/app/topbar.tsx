@@ -29,8 +29,7 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
 
   return (
     <>
-      <header className="flex items-center justify-between h-14 px-4 sm:px-6 border-b border-border bg-background shrink-0">
-        {/* Mobile sidebar toggle */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/70 bg-[linear-gradient(90deg,rgba(255,251,245,0.95),rgba(239,252,249,0.95))] px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             className="md:hidden p-1.5 rounded text-muted-foreground hover:text-foreground"
@@ -51,11 +50,10 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           <p className="md:hidden text-sm font-semibold">{title}</p>
         </div>
 
-        {/* Right side */}
         <div className="flex items-center gap-2">
           <div className="hidden lg:block text-right mr-1">
             <p className="text-xs font-medium">{email}</p>
-            <p className="text-[10px] text-muted-foreground">Family Account</p>
+            <p className="text-[10px] text-muted-foreground">SANbox family account</p>
           </div>
           <button className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Notifications">
             <Bell className="w-4 h-4" />

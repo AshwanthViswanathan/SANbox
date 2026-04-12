@@ -45,7 +45,7 @@ export function FloatingChat() {
               </div>
               <div>
                 <p className="text-sm font-semibold">Groq Chat</p>
-                <p className="text-xs text-muted-foreground">Quick sandbox for prompts and flows</p>
+                <p className="text-xs text-muted-foreground">Internal prompt lab for SANbox flows</p>
               </div>
             </div>
             <Button type="button" variant="ghost" size="icon-sm" onClick={() => setOpen(false)}>
@@ -58,7 +58,7 @@ export function FloatingChat() {
             <div className="space-y-3">
               {messages.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-                  Ask for a feature idea, API shape, device protocol, or hackathon pitch and this widget will hit
+                  Ask about lesson ideas, device behavior, or parent-dashboard flows and this widget will call
                   Groq through <code className="font-mono">/api/chat</code>.
                 </div>
               ) : (
@@ -102,7 +102,7 @@ export function FloatingChat() {
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask Groq to help shape the hackathon build..."
+                placeholder="Ask Groq about SANbox prompts or lesson flows..."
                 className="h-11 rounded-xl"
               />
               <Button type="submit" size="icon" disabled={!input.trim() || isBusy}>
@@ -120,7 +120,7 @@ export function FloatingChat() {
         className="h-12 rounded-full px-4 shadow-lg"
       >
         <MessageSquare className="size-4" />
-        {open ? 'Hide chat' : 'Test Groq'}
+        {open ? 'Hide chat' : 'Test prompts'}
       </Button>
     </div>
   )

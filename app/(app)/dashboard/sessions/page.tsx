@@ -42,7 +42,7 @@ export default async function SessionsPage({
     <div className="space-y-6">
       <PageHeader
         title="Sessions"
-        description="Every TeachBox conversation, with mode, timing, device, and safeguard visibility."
+        description="Every SANbox conversation, with mode, timing, device, and safeguard visibility."
         badge={activeFilter === 'all' ? undefined : FILTER_BADGES[activeFilter]}
       />
 
@@ -75,7 +75,7 @@ export default async function SessionsPage({
           <EmptyState
             icon={<Clock3 className="h-5 w-5" />}
             title="No sessions in this view"
-            description="The current filter does not match any of the available demo sessions."
+            description="The current filter does not match any of the available SANbox demo sessions."
           />
         </div>
       ) : (

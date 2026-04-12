@@ -216,7 +216,7 @@ export function DeviceCommandPanel({
 
       <div className="mt-4 rounded-2xl bg-muted/35 px-3 py-3 text-xs leading-5 text-muted-foreground">
         {poweredOff
-          ? `${deviceName} is marked off in the parent dashboard. The child device should appear unavailable in the demo until you turn it back on.`
+          ? `${deviceName} is marked off in the SANbox dashboard. The child device should appear unavailable in the demo until you turn it back on.`
           : paused
             ? `${deviceName} is marked paused. Use this to show that a parent can temporarily stop new child interactions without changing the turn API.`
             : microphoneOff && speakerOff
@@ -224,7 +224,7 @@ export function DeviceCommandPanel({
               : microphoneOff
                 ? `${deviceName} is active, but the microphone is marked off so the child cannot start a new voice turn in the demo.`
                 : speakerOff
-                  ? `${deviceName} is active, but the speaker is marked off so TeachBox replies should appear muted in the demo.`
+                  ? `${deviceName} is active, but the speaker is marked off so SANbox replies should appear muted in the demo.`
                   : isOnline
                     ? `${deviceName} is active and ready for button-to-talk sessions.`
                     : `${deviceName} is offline right now, but you can still stage a paused or off state for the demo.`}

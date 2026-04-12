@@ -54,7 +54,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Child transcript and TeachBox reply are paired in order of playback.
+                Child transcript and the SANbox reply are paired in order of playback.
               </p>
             </div>
 
@@ -97,7 +97,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground">TeachBox reply</p>
+                            <p className="text-sm font-semibold text-foreground">SANbox reply</p>
                             {turn.output_label && <SafeguardBadge label={turn.output_label} />}
                             {blocked && (
                               <span className="inline-flex items-center rounded-full bg-destructive px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-destructive-foreground">
