@@ -362,6 +362,38 @@ export default function PiDisplayPage() {
   const autoRestartTimeoutRef = useRef<number | null>(null)
   const activeAudioRef = useRef<HTMLAudioElement | null>(null)
 
+  async function refreshLinkedAccount() {
+    try {
+      const supabase = createSupabaseClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      setLinkedAccountEmail(user?.email ?? null)
+    } catch {
+      setLinkedAccountEmail(null)
+    }
+  }
+
+  async function claimSignedInDevice() {
+    try {
+      const supabase = createSupabaseClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user || !deviceIdRef.current) {
+        return
+      }
+
+      await fetch(`/api/v1/devices/${deviceIdRef.current}/claim`, {
+        method: 'POST',
+      })
+    } catch {
+      // Keep the demo usable even if the claim write fails transiently.
+    }
+  }
+
   useEffect(() => {
     const supported =
       typeof window !== 'undefined' &&
@@ -382,10 +414,12 @@ export default function PiDisplayPage() {
     sessionIdRef.current = getOrCreateStorageId('teachbox_demo_session_id', 'session')
 
     void refreshLinkedAccount()
+    void claimSignedInDevice()
     void fetchLessonState(deviceIdRef.current)
 
     const syncLessonState = () => {
       void refreshLinkedAccount()
+      void claimSignedInDevice()
 
       if (!deviceIdRef.current || lessonState?.status === 'active') {
         return
@@ -411,19 +445,6 @@ export default function PiDisplayPage() {
       window.removeEventListener('focus', syncLessonState)
     }
   }, [lessonState?.status])
-
-  async function refreshLinkedAccount() {
-    try {
-      const supabase = createSupabaseClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      setLinkedAccountEmail(user?.email ?? null)
-    } catch {
-      setLinkedAccountEmail(null)
-    }
-  }
 
   useEffect(() => {
     if (lessonInteraction?.runtime.input_mode !== 'choice') {
