@@ -13,7 +13,7 @@ import {
 } from '@/backend/storage/mock-device-lessons'
 import { transcribeAudio } from '@/backend/providers/stt'
 import { synthesizeSpeech } from '@/backend/providers/tts'
-import { logTurn } from '@/backend/storage/mock-sessions'
+import { loadRecentSessionTurns, logTurn } from '@/backend/storage/mock-sessions'
 import { getBlockedFallback } from '@/backend/utils/fallback-response'
 import { makeId } from '@/backend/utils/ids'
 import type { SessionTurnResponse, TeachBoxMode } from '@/shared/types'
@@ -272,11 +272,22 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   }
 
   const lesson = input.lessonId ? await loadLessonById(input.lessonId) : null
+  let recentTurns: Awaited<ReturnType<typeof loadRecentSessionTurns>> = []
+
+  if (input.mode === 'free_chat') {
+    try {
+      recentTurns = await loadRecentSessionTurns(input.sessionId, input.deviceId)
+    } catch {
+      recentTurns = []
+    }
+  }
+
   const llmStartedAt = performance.now()
   const assistantText = await generateTeachingReply({
     transcript,
     mode: input.mode,
     lessonTitle: lesson?.meta.title ?? null,
+    recentTurns,
     inputSafety: {
       label: inputSafeguard.label,
       reason: inputSafeguard.reason,
