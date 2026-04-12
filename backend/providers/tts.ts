@@ -75,7 +75,28 @@ function getGoogleCredentialsPath() {
   return process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() || null
 }
 
+function getGoogleServiceAccountJson() {
+  return process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim() || null
+}
+
 async function loadGoogleServiceAccountCredentials() {
+  const credentialsJson = getGoogleServiceAccountJson()
+  if (credentialsJson) {
+    const parsed = JSON.parse(credentialsJson) as Partial<GoogleServiceAccount>
+
+    if (!parsed.client_email || !parsed.private_key) {
+      throw new Error(
+        'GOOGLE_SERVICE_ACCOUNT_JSON does not contain a valid Google service account.'
+      )
+    }
+
+    return {
+      client_email: parsed.client_email,
+      private_key: parsed.private_key,
+      token_uri: parsed.token_uri || 'https://oauth2.googleapis.com/token',
+    } satisfies GoogleServiceAccount
+  }
+
   const credentialsPath = getGoogleCredentialsPath()
 
   if (!credentialsPath) {
@@ -132,7 +153,9 @@ async function getGoogleAccessToken() {
   const serviceAccount = await loadGoogleServiceAccountCredentials()
 
   if (!serviceAccount) {
-    throw new Error('Missing GOOGLE_APPLICATION_CREDENTIALS for Google Cloud TTS.')
+    throw new Error(
+      'Missing Google Cloud TTS credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS.'
+    )
   }
 
   const assertion = createGoogleJwt(serviceAccount)
@@ -281,7 +304,7 @@ async function synthesizeSpeechWithGemini(params: { text: string }) {
 export async function synthesizeSpeech(params: { turnId: string; text: string }) {
   void params.turnId
 
-  if (getGoogleCredentialsPath()) {
+  if (getGoogleServiceAccountJson() || getGoogleCredentialsPath()) {
     return synthesizeSpeechWithGoogleCloud({ text: params.text })
   }
 

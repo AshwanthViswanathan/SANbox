@@ -11,6 +11,8 @@ export async function GET() {
       groq: Boolean(process.env.GROQ_API_KEY),
       supabase_admin: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
       google_tts: Boolean(
+        process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+          process.env.GOOGLE_APPLICATION_CREDENTIALS ||
         process.env.GEMINI_API_KEY ||
           process.env.GOOGLE_API_KEY ||
           process.env.GOOGLE_CLOUD_API_KEY
