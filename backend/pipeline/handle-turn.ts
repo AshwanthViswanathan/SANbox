@@ -41,14 +41,16 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     const blockedFallback = getBlockedFallback()
     const ttsStartedAt = performance.now()
     let audio: SessionTurnResponse['audio'] = null
+    let ttsError: string | null = null
 
     try {
       audio = await synthesizeSpeech({
         turnId,
         text: blockedFallback,
       })
-    } catch {
+    } catch (error) {
       audio = null
+      ttsError = error instanceof Error ? error.message : 'Text-to-speech failed.'
     }
 
     timingsMs.tts = Math.round(performance.now() - ttsStartedAt)
@@ -73,6 +75,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       lesson: null,
       debug: {
         timings_ms: timingsMs,
+        tts_error: ttsError,
       },
     }
 
@@ -104,14 +107,16 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     outputSafeguard.label === 'BLOCK' ? getBlockedFallback() : assistantText
   const ttsStartedAt = performance.now()
   let audio: SessionTurnResponse['audio'] = null
+  let ttsError: string | null = null
 
   try {
     audio = await synthesizeSpeech({
       turnId,
       text: safeAssistantText,
     })
-  } catch {
+  } catch (error) {
     audio = null
+    ttsError = error instanceof Error ? error.message : 'Text-to-speech failed.'
   }
 
   timingsMs.tts = Math.round(performance.now() - ttsStartedAt)
@@ -146,6 +151,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
         : null,
     debug: {
       timings_ms: timingsMs,
+      tts_error: ttsError,
     },
   }
 

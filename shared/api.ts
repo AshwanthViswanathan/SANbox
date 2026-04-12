@@ -40,6 +40,7 @@ export const sessionTurnResponseSchema = z.object({
   debug: z
     .object({
       timings_ms: z.record(z.string(), z.number()),
+      tts_error: z.string().nullable().optional(),
     })
     .optional(),
 })

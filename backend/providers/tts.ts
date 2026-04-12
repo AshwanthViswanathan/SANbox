@@ -1,8 +1,17 @@
-const DEFAULT_TTS_MODEL = process.env.TEACHBOX_TTS_MODEL ?? 'gemini-2.5-flash-preview-tts'
-const DEFAULT_TTS_VOICE = process.env.TEACHBOX_TTS_VOICE_NAME ?? 'Kore'
+import { createSign } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
+
+const DEFAULT_GEMINI_TTS_MODEL = process.env.TEACHBOX_TTS_MODEL ?? 'gemini-2.5-flash-preview-tts'
+const DEFAULT_GEMINI_TTS_VOICE = process.env.TEACHBOX_TTS_VOICE_NAME ?? 'Kore'
+const DEFAULT_GOOGLE_TTS_VOICE =
+  process.env.TEACHBOX_TTS_VOICE_NAME ?? 'en-US-Chirp3-HD-Achernar'
+const DEFAULT_GOOGLE_TTS_LANGUAGE = process.env.TEACHBOX_TTS_LANGUAGE_CODE ?? 'en-US'
+const GOOGLE_TTS_AUDIO_ENCODING = 'MP3'
 const GEMINI_TTS_SAMPLE_RATE = 24000
 const GEMINI_TTS_CHANNELS = 1
 const GEMINI_TTS_BITS_PER_SAMPLE = 16
+const GOOGLE_OAUTH_SCOPE = 'https://www.googleapis.com/auth/cloud-platform'
+const GOOGLE_OAUTH_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:jwt-bearer'
 
 type GeminiTtsResponse = {
   candidates?: Array<{
@@ -20,6 +29,33 @@ type GeminiTtsResponse = {
   }
 }
 
+type GoogleServiceAccount = {
+  client_email: string
+  private_key: string
+  token_uri?: string
+}
+
+type GoogleTokenResponse = {
+  access_token?: string
+  expires_in?: number
+  error?: string
+  error_description?: string
+}
+
+type GoogleTtsResponse = {
+  audioContent?: string
+  error?: {
+    message?: string
+  }
+}
+
+let cachedAccessToken:
+  | {
+      token: string
+      expiresAt: number
+    }
+  | null = null
+
 function getGeminiApiKey() {
   const apiKey =
     process.env.GEMINI_API_KEY?.trim() ||
@@ -33,6 +69,98 @@ function getGeminiApiKey() {
   }
 
   return apiKey
+}
+
+function getGoogleCredentialsPath() {
+  return process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() || null
+}
+
+async function loadGoogleServiceAccountCredentials() {
+  const credentialsPath = getGoogleCredentialsPath()
+
+  if (!credentialsPath) {
+    return null
+  }
+
+  const raw = await readFile(credentialsPath, 'utf8')
+  const parsed = JSON.parse(raw) as Partial<GoogleServiceAccount>
+
+  if (!parsed.client_email || !parsed.private_key) {
+    throw new Error(
+      'GOOGLE_APPLICATION_CREDENTIALS does not point to a valid service-account JSON file.'
+    )
+  }
+
+  return {
+    client_email: parsed.client_email,
+    private_key: parsed.private_key,
+    token_uri: parsed.token_uri || 'https://oauth2.googleapis.com/token',
+  } satisfies GoogleServiceAccount
+}
+
+function createGoogleJwt(serviceAccount: GoogleServiceAccount) {
+  const now = Math.floor(Date.now() / 1000)
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+  }
+  const payload = {
+    iss: serviceAccount.client_email,
+    scope: GOOGLE_OAUTH_SCOPE,
+    aud: serviceAccount.token_uri || 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  }
+
+  const encode = (value: object) =>
+    Buffer.from(JSON.stringify(value)).toString('base64url')
+
+  const unsignedToken = `${encode(header)}.${encode(payload)}`
+  const signer = createSign('RSA-SHA256')
+  signer.update(unsignedToken)
+  signer.end()
+  const signature = signer.sign(serviceAccount.private_key).toString('base64url')
+
+  return `${unsignedToken}.${signature}`
+}
+
+async function getGoogleAccessToken() {
+  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) {
+    return cachedAccessToken.token
+  }
+
+  const serviceAccount = await loadGoogleServiceAccountCredentials()
+
+  if (!serviceAccount) {
+    throw new Error('Missing GOOGLE_APPLICATION_CREDENTIALS for Google Cloud TTS.')
+  }
+
+  const assertion = createGoogleJwt(serviceAccount)
+  const response = await fetch(serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: GOOGLE_OAUTH_GRANT_TYPE,
+      assertion,
+    }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as GoogleTokenResponse | null
+
+  if (!response.ok || !payload?.access_token) {
+    throw new Error(
+      `Google OAuth token exchange failed: ${response.status} ${payload?.error_description || payload?.error || 'Unknown error.'}`
+    )
+  }
+
+  cachedAccessToken = {
+    token: payload.access_token,
+    expiresAt: Date.now() + Math.max(0, (payload.expires_in ?? 3600) - 60) * 1000,
+  }
+
+  return cachedAccessToken.token
 }
 
 function createWavBufferFromPcm(pcmBuffer: Buffer) {
@@ -57,39 +185,75 @@ function createWavBufferFromPcm(pcmBuffer: Buffer) {
   return Buffer.concat([header, pcmBuffer])
 }
 
-export async function synthesizeSpeech(params: { turnId: string; text: string }) {
-  const { text } = params
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_TTS_MODEL}:generateContent`,
-    {
+async function synthesizeSpeechWithGoogleCloud(params: { text: string }) {
+  const accessToken = await getGoogleAccessToken()
+  const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
     method: 'POST',
     headers: {
-      'x-goog-api-key': getGeminiApiKey(),
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: `Read this exactly as a warm, encouraging K-5 learning companion. Keep the pacing calm and friendly.\n\n${text}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: process.env.TEACHBOX_TTS_VOICE_NAME ?? DEFAULT_TTS_VOICE,
+      input: {
+        text: params.text,
+      },
+      voice: {
+        languageCode: DEFAULT_GOOGLE_TTS_LANGUAGE,
+        name: DEFAULT_GOOGLE_TTS_VOICE,
+      },
+      audioConfig: {
+        audioEncoding: GOOGLE_TTS_AUDIO_ENCODING,
+      },
+    }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as GoogleTtsResponse | null
+
+  if (!response.ok || !payload?.audioContent) {
+    throw new Error(
+      `Google Cloud TTS failed: ${response.status} ${payload?.error?.message || 'Empty audio response.'}`
+    )
+  }
+
+  return {
+    content_type: 'audio/mpeg',
+    url: `data:audio/mpeg;base64,${payload.audioContent}`,
+  }
+}
+
+async function synthesizeSpeechWithGemini(params: { text: string }) {
+  const { text } = params
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_TTS_MODEL}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': getGeminiApiKey(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Read this exactly as a warm, encouraging K-5 learning companion. Keep the pacing calm and friendly.\n\n${text}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: DEFAULT_GEMINI_TTS_VOICE,
+              },
             },
           },
         },
-      },
-      model: DEFAULT_TTS_MODEL,
-    }),
-  }
+        model: DEFAULT_GEMINI_TTS_MODEL,
+      }),
+    }
   )
 
   if (!response.ok) {
@@ -112,4 +276,14 @@ export async function synthesizeSpeech(params: { turnId: string; text: string })
     content_type: 'audio/wav',
     url: `data:audio/wav;base64,${wavBuffer.toString('base64')}`,
   }
+}
+
+export async function synthesizeSpeech(params: { turnId: string; text: string }) {
+  void params.turnId
+
+  if (getGoogleCredentialsPath()) {
+    return synthesizeSpeechWithGoogleCloud({ text: params.text })
+  }
+
+  return synthesizeSpeechWithGemini({ text: params.text })
 }

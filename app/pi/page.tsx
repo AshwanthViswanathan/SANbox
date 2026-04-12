@@ -48,36 +48,167 @@ function dataUrlToPlayableSrc(dataUrl: string) {
   return dataUrl
 }
 
-async function playAssistantAudio(audioUrl: string | null, text: string) {
+function dataUrlToBlob(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/)
+
+  if (!match) {
+    throw new Error('Audio payload was not a valid data URL.')
+  }
+
+  const mimeType = match[1] || 'application/octet-stream'
+  const isBase64 = Boolean(match[2])
+  const payload = match[3] || ''
+  const binary = isBase64 ? atob(payload) : decodeURIComponent(payload)
+  const bytes = new Uint8Array(binary.length)
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+
+  return new Blob([bytes], { type: mimeType })
+}
+
+async function playAudioElement(
+  audioUrl: string,
+  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>
+) {
+  const blob = dataUrlToBlob(audioUrl)
+  const objectUrl = URL.createObjectURL(blob)
+  const audio = new Audio(dataUrlToPlayableSrc(objectUrl))
+  audio.preload = 'auto'
+  audio.playsInline = true
+  activeAudioRef.current = audio
+
+  try {
+    audio.load()
+    await audio.play()
+    await new Promise<void>((resolve, reject) => {
+      audio.onended = () => resolve()
+      audio.onerror = () => reject(new Error('Generated audio failed to play.'))
+    })
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+async function playAudioWithWebAudio(audioUrl: string) {
+  if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined') {
+    throw new Error('Web Audio playback is unavailable.')
+  }
+
+  const audioContext = new window.AudioContext()
+
+  try {
+    await audioContext.resume()
+    const blob = dataUrlToBlob(audioUrl)
+    const audioBuffer = await blob.arrayBuffer()
+    const decoded = await audioContext.decodeAudioData(audioBuffer.slice(0))
+    const source = audioContext.createBufferSource()
+    source.buffer = decoded
+    source.connect(audioContext.destination)
+
+    await new Promise<void>((resolve, reject) => {
+      source.onended = () => resolve()
+      source.start(0)
+
+      window.setTimeout(() => {
+        if (audioContext.state === 'closed') return
+        reject(new Error('Web Audio playback timed out.'))
+      }, Math.max(5000, decoded.duration * 1500))
+    })
+  } finally {
+    await audioContext.close().catch(() => undefined)
+  }
+}
+
+async function waitForSpeechVoices() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return []
+  }
+
+  const existing = window.speechSynthesis.getVoices()
+  if (existing.length > 0) {
+    return existing
+  }
+
+  return new Promise<SpeechSynthesisVoice[]>((resolve) => {
+    const timeoutId = window.setTimeout(() => {
+      window.speechSynthesis.onvoiceschanged = null
+      resolve(window.speechSynthesis.getVoices())
+    }, 1200)
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.clearTimeout(timeoutId)
+      window.speechSynthesis.onvoiceschanged = null
+      resolve(window.speechSynthesis.getVoices())
+    }
+  })
+}
+
+async function playBrowserSpeech(text: string) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
+    throw new Error('Browser speech synthesis is unavailable.')
+  }
+
+  const voices = await waitForSpeechVoices()
+
+  await new Promise<void>((resolve, reject) => {
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = 0.95
+    utterance.pitch = 1.05
+    utterance.lang = 'en-US'
+
+    const preferredVoice =
+      voices.find((voice) => /en[-_]?us/i.test(voice.lang) && voice.localService) ??
+      voices.find((voice) => /en/i.test(voice.lang)) ??
+      null
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice
+    }
+
+    utterance.onend = () => resolve()
+    utterance.onerror = () => reject(new Error('Browser speech synthesis failed.'))
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+  })
+}
+
+async function playAssistantAudio(
+  audioUrl: string | null,
+  text: string,
+  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>
+) {
+  const errors: string[] = []
+
   if (audioUrl) {
-    const audio = new Audio(dataUrlToPlayableSrc(audioUrl))
+    try {
+      await playAudioElement(audioUrl, activeAudioRef)
+      return
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : 'HTML audio playback failed.')
+      activeAudioRef.current?.pause()
+      activeAudioRef.current = null
+    }
 
     try {
-      await audio.play()
-      await new Promise<void>((resolve, reject) => {
-        audio.onended = () => resolve()
-        audio.onerror = () => reject(new Error('Generated audio failed to play.'))
-      })
+      await playAudioWithWebAudio(audioUrl)
       return
-    } catch {
-      audio.pause()
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : 'Web Audio playback failed.')
     }
   }
 
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window && text.trim()) {
-    await new Promise<void>((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.95
-      utterance.pitch = 1.05
-      utterance.onend = () => resolve()
-      utterance.onerror = () => reject(new Error('Browser speech synthesis failed.'))
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(utterance)
-    })
+  try {
+    await playBrowserSpeech(text)
     return
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Browser speech synthesis failed.')
   }
 
-  throw new Error('No playable audio was available.')
+  throw new Error(
+    `Audio playback failed on this browser. ${errors.join(' ')}`
+  )
 }
 
 function mergeFloat32Chunks(chunks: Float32Array[]) {
@@ -136,6 +267,35 @@ function encodeWav(samples: Float32Array, sampleRate: number) {
   return new Blob([buffer], { type: 'audio/wav' })
 }
 
+function createTestToneDataUrl(durationMs = 700, sampleRate = 24000) {
+  const sampleCount = Math.floor((sampleRate * durationMs) / 1000)
+  const samples = new Float32Array(sampleCount)
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const time = index / sampleRate
+    const envelope = Math.min(1, index / 1200) * Math.min(1, (sampleCount - index) / 1800)
+    samples[index] =
+      Math.sin(2 * Math.PI * 523.25 * time) * 0.18 * envelope +
+      Math.sin(2 * Math.PI * 659.25 * time) * 0.1 * envelope
+  }
+
+  const toneBlob = encodeWav(samples, sampleRate)
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+        return
+      }
+
+      reject(new Error('Failed to generate speaker test audio.'))
+    }
+    reader.onerror = () => reject(new Error('Failed to generate speaker test audio.'))
+    reader.readAsDataURL(toneBlob)
+  })
+}
+
 export default function PiDisplayPage() {
   const [state, setState] = useState<CosmoState>('idle')
   const [transcript, setTranscript] = useState(IDLE_TEXT)
@@ -143,6 +303,7 @@ export default function PiDisplayPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const [autoListenEnabled, setAutoListenEnabled] = useState(true)
+  const [isTestingSpeaker, setIsTestingSpeaker] = useState(false)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const deviceIdRef = useRef<string | null>(null)
@@ -223,6 +384,31 @@ export default function PiDisplayPage() {
     setState('idle')
     setTranscript(IDLE_TEXT)
     isStoppingRef.current = false
+  }
+
+  const testSpeaker = async () => {
+    if (isTestingSpeaker || isRecording || isStoppingRef.current) return
+
+    setIsTestingSpeaker(true)
+    cancelAutoRestart()
+    setAssistantText('This is a speaker test.')
+    setState('speaking')
+    setTranscript('Playing speaker test...')
+
+    try {
+      const testAudioUrl = await createTestToneDataUrl()
+      await playAssistantAudio(testAudioUrl, 'This is a speaker test.', activeAudioRef)
+      setState('idle')
+      setTranscript(IDLE_TEXT)
+    } catch (error) {
+      setState('error')
+      setTranscript(
+        error instanceof Error ? error.message : 'Speaker test failed on this browser.'
+      )
+    } finally {
+      activeAudioRef.current = null
+      setIsTestingSpeaker(false)
+    }
   }
 
   const getContainerStyle = () => {
@@ -311,26 +497,35 @@ export default function PiDisplayPage() {
       setTranscript(result.transcript)
       setAssistantText(result.assistant.text)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
-
-      const audio = result.audio?.url ? new Audio(dataUrlToPlayableSrc(result.audio.url)) : null
-      activeAudioRef.current = audio
+      const serverTtsError = result.debug?.tts_error ?? null
 
       try {
-        await playAssistantAudio(result.audio?.url ?? null, result.assistant.text)
-      } finally {
-        if (activeAudioRef.current === audio) {
-          activeAudioRef.current = null
+        await playAssistantAudio(
+          result.audio?.url ?? null,
+          result.assistant.text,
+          activeAudioRef
+        )
+        setState('idle')
+        setTranscript(IDLE_TEXT)
+        if (reason === 'auto' || autoListenEnabled) {
+          scheduleAutoRestart()
         }
-      }
-
-      setState('idle')
-      setTranscript(IDLE_TEXT)
-      if (reason === 'auto' || autoListenEnabled) {
-        scheduleAutoRestart()
+        return
+      } catch (playbackError) {
+        setState('error')
+        setTranscript(
+          serverTtsError
+            ? `Server TTS failed: ${serverTtsError}`
+            : playbackError instanceof Error
+              ? playbackError.message
+              : 'Audio playback failed on this browser.'
+        )
+        return
+      } finally {
+        activeAudioRef.current = null
       }
     } catch (error) {
       setState('error')
-      setAssistantText('')
       setTranscript(error instanceof Error ? error.message : 'Voice request failed.')
     } finally {
       isStoppingRef.current = false
@@ -481,7 +676,7 @@ export default function PiDisplayPage() {
         <button
           type="button"
           onClick={toggleRecording}
-          disabled={!isSupported || isStoppingRef.current}
+          disabled={!isSupported || isStoppingRef.current || isTestingSpeaker}
             className={cn(
               'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
               isRecording
@@ -502,9 +697,18 @@ export default function PiDisplayPage() {
             <button
               type="button"
               onClick={stopConversation}
-              className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+              disabled={isTestingSpeaker}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               Stop Conversation
+            </button>
+            <button
+              type="button"
+              onClick={() => void testSpeaker()}
+              disabled={!isSupported || isRecording || isStoppingRef.current || isTestingSpeaker}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
             </button>
             <button
               type="button"
@@ -513,8 +717,9 @@ export default function PiDisplayPage() {
               onMouseLeave={() => void stopRecorderAndSend('manual')}
               onTouchStart={() => void startRecording()}
               onTouchEnd={() => void stopRecorderAndSend('manual')}
+              disabled={isTestingSpeaker}
               className={cn(
-                'px-4 py-2 text-xs font-medium rounded-md transition-colors',
+                'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
@@ -530,7 +735,8 @@ export default function PiDisplayPage() {
                 setState('idle')
                 setTranscript(IDLE_TEXT)
               }}
-              className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              disabled={isTestingSpeaker}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               New Session
             </button>
@@ -543,8 +749,9 @@ export default function PiDisplayPage() {
                   cancelAutoRestart()
                 }
               }}
+              disabled={isTestingSpeaker}
               className={cn(
-                'px-4 py-2 text-xs font-medium rounded-md transition-colors',
+                'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                 autoListenEnabled
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
