@@ -631,134 +631,142 @@ export default function PiDisplayPage() {
         getContainerStyle()
       )}
     >
-      <div className="w-full flex justify-between items-center opacity-80">
-        <div className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider">
-          {getStateIcon()}
-          <span>{state}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {state === 'speaking' && (
-            <span className="px-2 py-1 rounded bg-accent/20 text-accent text-xs font-bold tracking-wider">
-              LESSON MODE
-            </span>
-          )}
-          <span className="w-3 h-3 rounded-full bg-emerald-500" />
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl gap-12">
-        <CosmoFace state={state} />
-
-        <div className="text-center space-y-2 max-w-md w-full">
-          <p
-            className={cn(
-              'text-2xl sm:text-3xl font-semibold leading-tight transition-all duration-300',
-              state === 'speaking' ? 'text-primary' : 'opacity-80'
-            )}
-          >
-            {transcript}
-          </p>
-          {assistantText ? (
-            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-              {assistantText}
-            </p>
-          ) : null}
-          {debugTimings ? (
-            <p className="text-xs font-mono text-muted-foreground">
-              {Object.entries(debugTimings)
-                .map(([key, value]) => `${key}:${value}ms`)
-                .join(' | ')}
-            </p>
-          ) : null}
-        </div>
-
-      <div className="flex flex-col items-center gap-4">
-        <button
-          type="button"
-          onClick={toggleRecording}
-          disabled={!isSupported || isStoppingRef.current || isTestingSpeaker}
-            className={cn(
-              'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
-              isRecording
-                ? 'bg-destructive text-destructive-foreground border-destructive'
-                : 'bg-primary text-primary-foreground border-primary'
-            )}
-          >
-            {isRecording ? (
-              <Square className="mx-auto h-8 w-8 fill-current" />
-            ) : (
-              <Mic className="mx-auto h-8 w-8" />
-            )}
-          </button>
-          <p className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
-            {isRecording ? 'Tap to stop' : autoListenEnabled ? 'Tap to start loop' : 'Tap to talk'}
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={stopConversation}
-              disabled={isTestingSpeaker}
-              className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Stop Conversation
-            </button>
-            <button
-              type="button"
-              onClick={() => void testSpeaker()}
-              disabled={!isSupported || isRecording || isStoppingRef.current || isTestingSpeaker}
-              className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
-            </button>
-            <button
-              type="button"
-              onMouseDown={() => void startRecording()}
-              onMouseUp={() => void stopRecorderAndSend('manual')}
-              onMouseLeave={() => void stopRecorderAndSend('manual')}
-              onTouchStart={() => void startRecording()}
-              onTouchEnd={() => void stopRecorderAndSend('manual')}
-              disabled={isTestingSpeaker}
-              className={cn(
-                'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+      <div className="w-full max-w-4xl flex-1 flex items-center justify-center">
+        <div className="w-full rounded-[2rem] border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 px-6 py-6 sm:px-10 sm:py-8">
+          <div className="w-full flex justify-between items-center opacity-80">
+            <div className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider">
+              {getStateIcon()}
+              <span>{state}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {state === 'speaking' && (
+                <span className="px-2 py-1 rounded bg-accent/20 text-accent text-xs font-bold tracking-wider">
+                  LESSON MODE
+                </span>
               )}
-            >
-              Hold To Talk
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                sessionIdRef.current = makeBrowserId('session')
-                window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
-                setAssistantText('')
-                setDebugTimings(null)
-                setState('idle')
-                setTranscript(IDLE_TEXT)
-              }}
-              disabled={isTestingSpeaker}
-              className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              New Session
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const nextValue = !autoListenEnabled
-                setAutoListenEnabled(nextValue)
-                if (!nextValue) {
-                  cancelAutoRestart()
-                }
-              }}
-              disabled={isTestingSpeaker}
-              className={cn(
-                'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                autoListenEnabled
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              )}
-            >
-              {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
-            </button>
+              <span className="w-3 h-3 rounded-full bg-emerald-500" />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center w-full gap-12 pt-8">
+            <CosmoFace state={state} />
+
+            <div className="text-center space-y-2 max-w-md w-full">
+              <p
+                className={cn(
+                  'text-2xl sm:text-3xl font-semibold leading-tight transition-all duration-300',
+                  state === 'speaking' ? 'text-primary' : 'opacity-80'
+                )}
+              >
+                {transcript}
+              </p>
+              {assistantText ? (
+                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                  {assistantText}
+                </p>
+              ) : null}
+              {debugTimings ? (
+                <p className="text-xs font-mono text-muted-foreground">
+                  {Object.entries(debugTimings)
+                    .map(([key, value]) => `${key}:${value}ms`)
+                    .join(' | ')}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={!isSupported || isStoppingRef.current || isTestingSpeaker}
+                className={cn(
+                  'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
+                  isRecording
+                    ? 'bg-destructive text-destructive-foreground border-destructive'
+                    : 'bg-primary text-primary-foreground border-primary'
+                )}
+              >
+                {isRecording ? (
+                  <Square className="mx-auto h-8 w-8 fill-current" />
+                ) : (
+                  <Mic className="mx-auto h-8 w-8" />
+                )}
+              </button>
+              <p className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                {isRecording
+                  ? 'Tap to stop'
+                  : autoListenEnabled
+                    ? 'Tap to start loop'
+                    : 'Tap to talk'}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={stopConversation}
+                  disabled={isTestingSpeaker}
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Stop Conversation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void testSpeaker()}
+                  disabled={!isSupported || isRecording || isStoppingRef.current || isTestingSpeaker}
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={() => void startRecording()}
+                  onMouseUp={() => void stopRecorderAndSend('manual')}
+                  onMouseLeave={() => void stopRecorderAndSend('manual')}
+                  onTouchStart={() => void startRecording()}
+                  onTouchEnd={() => void stopRecorderAndSend('manual')}
+                  disabled={isTestingSpeaker}
+                  className={cn(
+                    'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  )}
+                >
+                  Hold To Talk
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionIdRef.current = makeBrowserId('session')
+                    window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
+                    setAssistantText('')
+                    setDebugTimings(null)
+                    setState('idle')
+                    setTranscript(IDLE_TEXT)
+                  }}
+                  disabled={isTestingSpeaker}
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  New Session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextValue = !autoListenEnabled
+                    setAutoListenEnabled(nextValue)
+                    if (!nextValue) {
+                      cancelAutoRestart()
+                    }
+                  }}
+                  disabled={isTestingSpeaker}
+                  className={cn(
+                    'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    autoListenEnabled
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  )}
+                >
+                  {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
