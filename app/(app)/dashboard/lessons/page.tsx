@@ -1,12 +1,14 @@
 import { BookOpen } from 'lucide-react'
 
+import { LessonAssignmentPanel } from '@/components/app/lesson-assignment-panel'
 import { PageHeader } from '@/components/app/page-header'
-import { getLessonUsage } from '@/lib/parent-dashboard-data'
+import { getDeviceSnapshots, getLessonUsage } from '@/lib/parent-dashboard-data'
 
 export default async function LessonsPage() {
-  const lessons = await getLessonUsage()
+  const [lessons, devices] = await Promise.all([getLessonUsage(), getDeviceSnapshots()])
   const activeLessons = lessons.filter((lesson) => lesson.usageCount > 0).length
   const latestLessonTurn = lessons.find((lesson) => lesson.latestSessionAt)?.latestSessionAt ?? null
+  const assignedLessons = devices.filter((device) => device.lessonState.assigned_lesson).length
 
   return (
     <div className="space-y-8">
@@ -20,9 +22,18 @@ export default async function LessonsPage() {
         <LessonStat label="Lesson library" value={String(lessons.length)} />
         <LessonStat label="Used in sessions" value={String(activeLessons)} />
         <LessonStat
-          label="Most recent lesson turn"
-          value={latestLessonTurn ? formatDate(latestLessonTurn) : 'No usage yet'}
+          label="Assigned devices"
+          value={`${assignedLessons}/${devices.length}`}
         />
+      </div>
+
+      <div className="stitch-panel px-6 py-6">
+        <p className="stitch-label text-tertiary">Lesson assignment</p>
+        <p className="stitch-heading mt-2 text-2xl">Queue lessons without leaving the library</p>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+          Pick a lesson, assign it to one or more devices, and the device will see that lesson as its next parent-approved guided run.
+          {latestLessonTurn ? ` Most recent lesson activity: ${formatDate(latestLessonTurn)}.` : ''}
+        </p>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -74,6 +85,16 @@ export default async function LessonsPage() {
                   Parents can confirm that the lesson exists, see which grade band it targets, and verify that the session
                   really ran as a guided lesson dive instead of free chat.
                 </p>
+
+                <LessonAssignmentPanel
+                  lesson={lesson}
+                  devices={devices.map((device) => ({
+                    id: device.id,
+                    name: device.name,
+                    status: device.status,
+                    lessonState: device.lessonState,
+                  }))}
+                />
               </div>
             </article>
           )
