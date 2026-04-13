@@ -73,13 +73,18 @@ export function CosmoFace({ state, className }: CosmoFaceProps) {
       : getFaceAsset(state)
 
   return (
-    <div className={cn('relative w-64 h-64 sm:w-72 sm:h-72', className)}>
+    <div
+      className={cn(
+        'relative h-36 w-36 sm:h-44 sm:w-44 lg:h-[min(34vh,17rem)] lg:w-[min(34vh,17rem)]',
+        className
+      )}
+    >
       <Image
         src={face.src}
         alt={face.alt}
         fill
         priority
-        sizes="(max-width: 640px) 256px, 288px"
+        sizes="(max-width: 640px) 144px, (max-width: 1024px) 176px, 272px"
         className="object-contain select-none"
       />
     </div>

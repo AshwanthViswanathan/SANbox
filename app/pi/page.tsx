@@ -1092,13 +1092,14 @@ export default function PiDisplayPage() {
   return (
     <div
       className={cn(
-        'min-h-screen flex flex-col items-center justify-between p-6 sm:p-12 transition-colors duration-500',
+        'h-dvh overflow-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 transition-colors duration-500',
         getContainerStyle()
       )}
     >
-      <div className="w-full max-w-4xl flex-1 flex items-center justify-center">
-        <div className="w-full rounded-[2rem] border border-white/20 bg-white/10 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 px-6 py-6 sm:px-10 sm:py-8">
-          <div className="w-full flex justify-between items-center opacity-80">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-2">
+        <div className="flex min-h-0 flex-1 items-stretch justify-center">
+          <div className="flex h-full w-full flex-col rounded-[2rem] border border-white/20 bg-white/10 px-4 py-4 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
+            <div className="flex w-full items-center justify-between opacity-80">
             <div className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider">
               {getStateIcon()}
               <span>{state}</span>
@@ -1111,70 +1112,83 @@ export default function PiDisplayPage() {
               )}
               <span className="w-3 h-3 rounded-full bg-emerald-500" />
             </div>
-          </div>
+            </div>
 
-          <div className="flex flex-col items-center justify-center w-full gap-12 pt-8">
-            <CosmoFace state={state} />
+            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_1fr_auto] gap-3 pt-3 sm:gap-4 sm:pt-4 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[auto_1fr_auto] lg:items-center lg:gap-x-6 lg:gap-y-3">
+              <div className="flex justify-center lg:row-span-2">
+                <CosmoFace state={state} />
+              </div>
 
-            <div className="text-center space-y-2 max-w-md w-full">
-              <p
-                className={cn(
-                  'text-2xl sm:text-3xl font-semibold leading-tight transition-all duration-300',
-                  state === 'speaking' ? 'text-primary' : 'opacity-80'
-                )}
-              >
-                {transcript}
-              </p>
-              {assistantText ? (
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-                  {assistantText}
+              <div className="min-h-0 space-y-2 text-center lg:text-left">
+                <p
+                  className={cn(
+                    'text-lg font-semibold leading-snug transition-all duration-300 sm:text-xl lg:text-[1.7rem]',
+                    state === 'speaking' ? 'text-primary' : 'opacity-80',
+                    '[display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden'
+                  )}
+                >
+                  {transcript}
                 </p>
-              ) : null}
-              {lessonInteraction ? (
-                <p className="text-xs font-mono text-muted-foreground">
-                  {lessonInteraction.lesson.title} • {lessonInteraction.runtime.step_type}
-                </p>
-              ) : lessonState?.assigned_lesson ? (
-                <p className="text-xs font-mono text-muted-foreground">
-                  Assigned lesson: {lessonState.assigned_lesson.title}
-                </p>
-              ) : null}
+                {assistantText ? (
+                  <p className="text-sm leading-relaxed text-muted-foreground sm:text-base lg:text-lg [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:6] overflow-hidden">
+                    {assistantText}
+                  </p>
+                ) : null}
+                {lessonInteraction ? (
+                  <p className="text-[11px] font-mono text-muted-foreground sm:text-xs">
+                    {lessonInteraction.lesson.title} • {lessonInteraction.runtime.step_type}
+                  </p>
+                ) : lessonState?.assigned_lesson ? (
+                  <p className="text-[11px] font-mono text-muted-foreground sm:text-xs">
+                    Assigned lesson: {lessonState.assigned_lesson.title}
+                  </p>
+                ) : null}
+                {debugTimings ? (
+                  <p className="text-[11px] font-mono text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                    {Object.entries(debugTimings)
+                      .map(([key, value]) => `${key}:${value}ms`)
+                      .join(' | ')}
+                  </p>
+                ) : null}
+              </div>
+
               {deviceIdRef.current ? (
-                <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-left">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    SANbox Device
-                  </p>
-                  <p className="mt-2 break-all font-mono text-xs text-foreground">
-                    {deviceIdRef.current}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    Ask the parent dashboard to assign lessons to this exact device ID.
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    {linkedAccountEmail
-                      ? `Linked account: ${linkedAccountEmail}`
-                      : 'Not linked to a signed-in SANbox account yet.'}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void copyDeviceReference('device_id')}
-                      className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void copyDeviceReference('device_link')}
-                      className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                      {copiedState === 'device_link' ? 'Copied Link' : 'Copy Reopen Link'}
-                    </button>
+                <div className="rounded-2xl border border-white/15 bg-white/8 px-3 py-3 text-left lg:col-start-2">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
+                        SANbox Device
+                      </p>
+                      <p className="mt-1 break-all font-mono text-[11px] text-foreground sm:text-xs">
+                        {deviceIdRef.current}
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground sm:text-xs">
+                        {linkedAccountEmail
+                          ? `Linked account: ${linkedAccountEmail}`
+                          : 'Not linked to a SANbox account yet.'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void copyDeviceReference('device_id')}
+                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyDeviceReference('device_link')}
+                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
+                      </button>
+                    </div>
                   </div>
                   {!linkedAccountEmail ? (
-                    <div className="mt-4">
+                    <div className="mt-3">
                       <GoogleAuthButton
                         mode="login"
                         nextPath={piLoginPath}
@@ -1184,53 +1198,45 @@ export default function PiDisplayPage() {
                   ) : null}
                 </div>
               ) : null}
-              {debugTimings ? (
-                <p className="text-xs font-mono text-muted-foreground">
-                  {Object.entries(debugTimings)
-                    .map(([key, value]) => `${key}:${value}ms`)
-                    .join(' | ')}
-                </p>
-              ) : null}
-            </div>
 
-            <div className="flex flex-col items-center gap-4">
-              <button
-                type="button"
-                onClick={toggleRecording}
-                disabled={
-                  !isSupported ||
-                  isStoppingRef.current ||
-                  isTestingSpeaker ||
-                  (lessonState?.status === 'active' && !lessonAllowsVoiceInput) ||
-                  isLessonLoading
-                }
-                className={cn(
-                  'h-24 w-24 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
-                  isRecording
-                    ? 'bg-destructive text-destructive-foreground border-destructive'
-                    : 'bg-primary text-primary-foreground border-primary'
-                )}
-              >
-                {isRecording ? (
-                  <Square className="mx-auto h-8 w-8 fill-current" />
-                ) : (
-                  <Mic className="mx-auto h-8 w-8" />
-                )}
-              </button>
-              <p className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                {isRecording
-                  ? 'Tap to stop'
-                  : lessonState?.status === 'assigned'
-                    ? 'Tap to talk or start lesson'
-                    : lessonInteraction?.runtime.input_mode === 'choice'
-                      ? 'Use A, B, C, or D'
-                      : lessonState?.status === 'active' && !lessonAllowsVoiceInput
-                        ? 'Lesson is guiding the next step'
-                        : autoListenEnabled
-                          ? 'Tap to start loop'
-                          : 'Tap to talk'}
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
+              <div className="flex flex-col items-center gap-3 lg:col-span-2 lg:pt-1">
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  disabled={
+                    !isSupported ||
+                    isStoppingRef.current ||
+                    isTestingSpeaker ||
+                    (lessonState?.status === 'active' && !lessonAllowsVoiceInput) ||
+                    isLessonLoading
+                  }
+                  className={cn(
+                    'h-20 w-20 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-24 sm:w-24',
+                    isRecording
+                      ? 'border-destructive bg-destructive text-destructive-foreground'
+                      : 'border-primary bg-primary text-primary-foreground'
+                  )}
+                >
+                  {isRecording ? (
+                    <Square className="mx-auto h-7 w-7 fill-current sm:h-8 sm:w-8" />
+                  ) : (
+                    <Mic className="mx-auto h-7 w-7 sm:h-8 sm:w-8" />
+                  )}
+                </button>
+                <p className="text-center text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">
+                  {isRecording
+                    ? 'Tap to stop'
+                    : lessonState?.status === 'assigned'
+                      ? 'Tap to talk or start lesson'
+                      : lessonInteraction?.runtime.input_mode === 'choice'
+                        ? 'Use A, B, C, or D'
+                        : lessonState?.status === 'active' && !lessonAllowsVoiceInput
+                          ? 'Lesson is guiding the next step'
+                          : autoListenEnabled
+                            ? 'Tap to start loop'
+                            : 'Tap to talk'}
+                </p>
+                <div className="flex max-w-4xl flex-wrap justify-center gap-2">
                 {lessonState?.status === 'assigned' && (
                   <button
                     type="button"
@@ -1327,30 +1333,31 @@ export default function PiDisplayPage() {
                 >
                   {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
                 </button>
-              </div>
-              {lessonInteraction?.runtime.input_mode === 'choice' && lessonInteraction.runtime.choices ? (
-                <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                </div>
+                {lessonInteraction?.runtime.input_mode === 'choice' && lessonInteraction.runtime.choices ? (
+                  <div className="grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2">
                   {(['a', 'b', 'c', 'd'] as const).map((choiceKey) => (
                     <button
                       key={choiceKey}
                       type="button"
                       onClick={() => void submitCheckpointChoice(choiceKey)}
                       disabled={isLessonLoading}
-                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-foreground hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="mr-2 font-mono uppercase">{choiceKey}.</span>
                       {lessonInteraction.runtime.choices?.[choiceKey]}
                     </button>
                   ))}
-                </div>
-              ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="w-full flex justify-center text-xs text-muted-foreground text-center">
-        Browser demo mic capture requires `https` or `localhost`. Each browser keeps its own SANbox device ID.
+        <div className="flex justify-center px-2 text-center text-[11px] text-muted-foreground sm:text-xs">
+          Browser demo mic capture requires `https` or `localhost`. Each browser keeps its own SANbox device ID.
+        </div>
       </div>
     </div>
   )
