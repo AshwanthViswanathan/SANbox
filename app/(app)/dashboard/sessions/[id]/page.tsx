@@ -3,6 +3,7 @@ import { Bot, Headphones, ShieldAlert, UserRound } from 'lucide-react'
 
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge, SafeguardBadge } from '@/components/app/teachbox-badges'
+import { LatexText } from '@/components/pi/latex-text'
 import { getLessons, getParentSessionDetail, getSessionSummaryById } from '@/lib/parent-dashboard-data'
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -117,8 +118,24 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                                 : 'border-primary-container/25 bg-primary-container/50 text-on-primary-container'
                             }`}
                           >
-                            {turn.assistant_text}
+                            <LatexText
+                                text={turn.assistant_text || ''}
+                                className="[&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
+                            />
                           </div>
+                          {turn.assistant_example && (
+                            <div className="mt-3 rounded-[1.5rem] border border-accent/20 bg-white/80 px-5 py-4 shadow-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex rounded-full bg-accent/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+                                  Example
+                                </span>
+                              </div>
+                              <LatexText
+                                text={normalizeAssistantExample(turn.assistant_example)}
+                                className="mt-3 text-sm leading-7 text-foreground [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
+                              />
+                            </div>
+                          )}
                           <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                             <Headphones className="h-3.5 w-3.5" />
                             {blocked ? 'Fallback safety reply was spoken.' : 'Audio was returned to the device.'}
@@ -216,4 +233,8 @@ function formatDateTime(value: string) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function normalizeAssistantExample(value: string) {
+  return value.replace(/^Example:\s*/i, '').trim()
 }

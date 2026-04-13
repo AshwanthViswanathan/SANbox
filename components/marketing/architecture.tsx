@@ -50,7 +50,7 @@ export function Architecture() {
                   >
                     {i + 1}
                   </div>
-                  <div className="panel flex-1 p-3">
+                  <div className="flex-1 rounded-xl border border-white/60 bg-[linear-gradient(180deg,rgba(255,250,244,0.88),rgba(238,245,247,0.74))] p-3 shadow-sm">
                     <div className={`mb-1 text-xs font-mono font-semibold ${layer.color.split(' ')[2]}`}>
                       {layer.label}
                     </div>
@@ -72,7 +72,7 @@ export function Architecture() {
             <h2 className="mb-6 text-3xl font-bold tracking-tight text-balance">
               Organized around the product experience.
             </h2>
-            <div className="panel-sunken space-y-1.5 p-4 font-mono text-sm">
+            <div className="space-y-1.5 rounded-xl border border-white/60 bg-[linear-gradient(180deg,rgba(236,249,246,0.88),rgba(224,239,234,0.78))] p-4 font-mono text-sm shadow-sm">
               {folders.map((folder) => (
                 <div key={folder} className="flex items-center gap-2 text-foreground/80">
                   <ArrowRight className="h-3 w-3 shrink-0 text-accent" />
@@ -81,7 +81,7 @@ export function Architecture() {
               ))}
             </div>
 
-            <div className="panel mt-6 p-4 text-sm leading-relaxed text-muted-foreground">
+            <div className="mt-6 rounded-xl border border-white/60 bg-[linear-gradient(180deg,rgba(237,246,255,0.9),rgba(223,234,245,0.8))] p-4 text-sm leading-relaxed text-muted-foreground shadow-sm">
               <strong className="text-foreground">Cloud-backed tutoring.</strong> The child speaks to a local
               voice device while SANbox handles transcription, moderation, tutoring responses, and
               parent-facing summaries in the Next.js app.

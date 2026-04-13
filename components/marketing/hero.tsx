@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, LifeBuoy, Mic, ShieldAlert, Waves } from 'lucide-react'
+import { ArrowRight, LifeBuoy, Mic, ShieldAlert } from 'lucide-react'
 import shorelineImage from '@/docs/360_F_603755850_EmEXsTLLSljHRiazimrAya1HukruzkjO.jpg'
 
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ export function Hero() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_30%)]" />
             </div>
 
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/75 px-4 py-2 text-xs font-mono uppercase tracking-[0.2em] text-primary shadow-sm">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full px-1 py-2 text-xs font-mono uppercase tracking-[0.2em] text-primary">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
               Voice-first learning for curious kids
             </div>
@@ -49,6 +49,15 @@ export function Hero() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
+                <Link
+                  href="https://docs.google.com/forms/d/e/1FAIpQLScmsG8Vh71b03CKwSlM6tsFL_4tGIE7QnAVuWFS3GtgVRYJgw/viewform?usp=publish-editor"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Early access
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
                 <Link href="/pi">Demo</Link>
               </Button>
             </div>
@@ -59,7 +68,7 @@ export function Hero() {
                 { icon: <ShieldAlert className="h-4 w-4" />, label: 'Safe replies with parent review' },
                 { icon: <LifeBuoy className="h-4 w-4" />, label: 'A guided voice companion named San' },
               ].map((item) => (
-                <div key={item.label} className="rounded-[1.5rem] border border-transparent bg-white/52 px-4 py-4 text-sm text-muted-foreground backdrop-blur-sm">
+                <div key={item.label} className="px-1 py-2 text-sm text-muted-foreground">
                   <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     {item.icon}
                   </span>
@@ -70,17 +79,7 @@ export function Hero() {
           </div>
 
           <div className="relative lg:pl-2">
-            <div className="stitch-panel h-full overflow-hidden border-transparent bg-white/58 p-0">
-              <div className="flex items-center justify-between px-7 py-6">
-                <div>
-                  <p className="text-base font-semibold text-foreground">SANbox family dashboard</p>
-                  <p className="text-sm text-muted-foreground">A stitched view of sessions, safeguards, and device health.</p>
-                </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.18em] text-secondary-foreground">
-                  <Waves className="h-3.5 w-3.5" />
-                  Live session
-                </div>
-              </div>
+            <div className="h-full overflow-hidden p-0">
               <DashboardPreview />
             </div>
           </div>
@@ -101,10 +100,16 @@ function DashboardPreview() {
   ]
   const previewCardClass =
     'border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(245,250,252,0.42))] shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm'
+  const statPanelSurfaces = [
+    'bg-[linear-gradient(180deg,rgba(255,248,238,0.92),rgba(248,238,222,0.82))]',
+    'bg-[linear-gradient(180deg,rgba(236,249,246,0.92),rgba(220,240,235,0.82))]',
+    'bg-[linear-gradient(180deg,rgba(236,245,255,0.92),rgba(222,236,249,0.82))]',
+    'bg-[linear-gradient(180deg,rgba(245,240,230,0.92),rgba(233,225,211,0.82))]',
+  ]
 
   return (
     <div className="grid min-h-[620px] grid-cols-[240px_1fr] gap-5 bg-transparent px-6 pb-6 pt-0 text-sidebar-foreground">
-      <div className="rounded-[1.75rem] border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(247,241,217,0.34))] px-5 py-6 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm">
+      <div className="rounded-[1.75rem] border border-white/45 bg-[linear-gradient(180deg,rgba(244,251,248,0.76),rgba(223,240,232,0.48))] px-5 py-6 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm">
         <div className="mb-4 px-2 py-2 text-sm font-mono uppercase tracking-widest text-sidebar-foreground/40">
           Family cove
         </div>
@@ -125,7 +130,7 @@ function DashboardPreview() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className={`${previewCardClass} rounded-[1.75rem] px-6 py-6`}>
+        <div className={`${previewCardClass} rounded-[1.75rem] bg-[linear-gradient(180deg,rgba(255,249,241,0.86),rgba(238,246,248,0.6))] px-6 py-6`}>
           <div>
             <div className="text-lg font-semibold text-sidebar-foreground">Session history</div>
             <div className="font-mono text-base text-sidebar-foreground/50">family / sanbox-home</div>
@@ -142,10 +147,10 @@ function DashboardPreview() {
             { label: 'Lesson dives', value: '14' },
             { label: 'Safe turns', value: '98%' },
             { label: 'Tide checks', value: '1' },
-          ].map((stat) => (
+          ].map((stat, index) => (
             <div
               key={stat.label}
-              className={`${previewCardClass} min-w-0 rounded-[1.3rem] px-5 py-5`}
+              className={`${previewCardClass} ${statPanelSurfaces[index % statPanelSurfaces.length]} min-w-0 rounded-[1.3rem] px-5 py-5`}
             >
               <div className="text-xs font-mono uppercase tracking-[0.16em] text-sidebar-foreground/45">
                 {stat.label}
@@ -166,7 +171,9 @@ function DashboardPreview() {
             { t: '10:42:07', msg: 'A simple summary is saved so parents can review it later.', c: 'text-slate-300' },
           ].map((line, i) => (
             <div key={i} className="flex gap-3">
-              <span className="shrink-0 text-sidebar-foreground/70">{line.t}</span>
+              <span className="shrink-0 text-[12px] font-semibold tracking-[0.08em] text-white/95">
+                {line.t}
+              </span>
               <span className={line.c}>{line.msg}</span>
             </div>
           ))}

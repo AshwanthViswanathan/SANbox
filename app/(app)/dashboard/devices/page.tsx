@@ -15,7 +15,6 @@ export default async function DevicesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Device Status"
-        description="Voice devices registered by the demo. Teammates can open /pi in a browser and appear here as their own device."
         badge={`${onlineDevices}/${devices.length} ONLINE`}
       />
 

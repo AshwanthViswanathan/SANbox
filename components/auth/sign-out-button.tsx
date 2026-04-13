@@ -21,7 +21,14 @@ export function SignOutButton() {
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" className="gap-2 bg-white/70" onClick={handleSignOut} disabled={isPending}>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="gap-2 bg-white/80 text-slate-950 hover:text-black"
+      onClick={handleSignOut}
+      disabled={isPending}
+    >
       {isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
       Sign out
     </Button>

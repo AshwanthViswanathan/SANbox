@@ -56,10 +56,7 @@ export default async function SessionsPage({
 
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="stitch-heading text-4xl">Sessions</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Every SANbox conversation, with mode, timing, device, and safeguard visibility.
-            </p>
+            <h2 className="stitch-heading text-5xl md:text-6xl">Sessions</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="stitch-card border-l-4 border-l-primary px-5 py-5">

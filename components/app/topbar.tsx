@@ -26,6 +26,10 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
   // Try to find exact match first, then fallback to base path
   const title = breadcrumbMap[pathname] ?? 
     (pathname.startsWith('/dashboard/sessions/') ? 'Session Details' : 'Dashboard')
+  const showTopTitle =
+    pathname !== '/dashboard/sessions' &&
+    pathname !== '/dashboard/devices' &&
+    title !== 'Overview'
 
   return (
     <>
@@ -38,25 +42,22 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="stitch-readable-surface hidden px-4 py-3 md:flex md:flex-col">
-            <div className="text-[11px] font-black uppercase tracking-[0.25em] text-tertiary">Monitoring hub</div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-              <Link href="/dashboard" className="hover:text-foreground transition-colors">dashboard</Link>
-              {title !== 'Overview' && (
-                <>
-                  <span>/</span>
-                  <span className="text-foreground">{title.toLowerCase()}</span>
-                </>
-              )}
+          {showTopTitle && (
+            <div className="hidden px-4 py-3 md:flex md:flex-col">
+              <div className="mt-1 flex items-center gap-1.5 text-xs font-mono text-slate-700/80">
+                <span className="text-slate-950 font-semibold text-lg">{title}</span>
+              </div>
             </div>
-          </div>
-          <p className="stitch-readable-surface px-4 py-2 text-sm font-semibold md:hidden">{title}</p>
+          )}
+          {showTopTitle && (
+            <p className="px-4 py-2 text-sm font-bold text-slate-950 md:hidden">{title}</p>
+          )}
         </div>
 
-        <div className="stitch-panel flex items-center gap-3 px-4 py-2">
+        <div className="bg-white/60 backdrop-blur-xl shadow-sm border border-white/50 rounded-[1.25rem] flex items-center gap-3 px-5 py-2.5">
           <div className="hidden lg:block text-right">
-            <p className="text-sm font-semibold">{email}</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">SANbox family account</p>
+            <p className="text-sm font-bold text-slate-950">{email}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-700/70">SANbox family account</p>
           </div>
           <SignOutButton />
         </div>

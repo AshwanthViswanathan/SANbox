@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { cache } from 'react'
+import { unstable_noStore as noStore } from 'next/cache'
 
 import { loadLessons } from '@/backend/lessons/load-lessons'
 import { getDeviceControl } from '@/backend/storage/mock-device-controls'
@@ -82,7 +83,9 @@ const getAuthenticatedUserId = cache(async () => {
   return user?.id ?? null
 })
 
-export const getParentSessions = cache(async () => {
+export async function getParentSessions() {
+  noStore()
+
   const userId = await getAuthenticatedUserId()
   if (!userId) return []
 
@@ -93,9 +96,11 @@ export const getParentSessions = cache(async () => {
   return [...parsed.sessions].sort(
     (a, b) => new Date(b.last_turn_at).getTime() - new Date(a.last_turn_at).getTime()
   )
-})
+}
 
-export const getParentSessionDetail = cache(async (sessionId: string) => {
+export async function getParentSessionDetail(sessionId: string) {
+  noStore()
+
   const userId = await getAuthenticatedUserId()
   if (!userId) {
     return parentSessionDetailResponseSchema.parse({
@@ -112,7 +117,7 @@ export const getParentSessionDetail = cache(async (sessionId: string) => {
   const supabase = await createClient()
   const payload = await buildSessionDetail(supabase, userId, sessionId)
   return parentSessionDetailResponseSchema.parse(payload)
-})
+}
 
 export const getLessons = cache(async () => {
   const payload = { lessons: await loadLessons() }
@@ -121,6 +126,8 @@ export const getLessons = cache(async () => {
 })
 
 export async function getDashboardOverview() {
+  noStore()
+
   const [sessions, devices] = await Promise.all([getParentSessions(), getDeviceSnapshots()])
 
   const flaggedTurns = await collectFlaggedTurns(sessions)
@@ -169,6 +176,8 @@ export async function getLessonUsage() {
 }
 
 export async function getDeviceSnapshots(): Promise<ParentDeviceSnapshot[]> {
+  noStore()
+
   const sessions = await getParentSessions()
   const parentDevices = await getParentDevices()
 
@@ -224,6 +233,8 @@ export async function getDeviceSnapshots(): Promise<ParentDeviceSnapshot[]> {
 }
 
 export async function getSessionSummaryById(sessionId: string) {
+  noStore()
+
   const sessions = await getParentSessions()
   return sessions.find((session) => session.session_id === sessionId) ?? null
 }

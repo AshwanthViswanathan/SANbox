@@ -30,12 +30,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <DashboardSidebar email={user.email ?? 'Signed in'} />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col md:ml-64">
+      <div className="relative flex min-w-0 flex-1 flex-col md:ml-64">
         <DashboardTopbar email={user.email ?? 'Signed in'} />
         <main className="flex-1 px-4 pb-4 pt-2 sm:px-6 sm:pb-5">
-          <div className="stitch-page-shell px-4 py-5 sm:px-5 sm:py-6">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>
