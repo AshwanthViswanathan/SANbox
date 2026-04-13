@@ -30,12 +30,23 @@ export const lessonStepTypeSchema = z.enum([
 ])
 
 export const lessonInputModeSchema = z.enum(['none', 'voice', 'choice'])
+export const interactionSourceSchema = z.enum(['lesson', 'free_chat'])
 
 export const lessonChoiceSchema = z.object({
   a: z.string(),
   b: z.string(),
   c: z.string(),
   d: z.string(),
+})
+
+export const interactiveCheckpointSchema = z.object({
+  source: interactionSourceSchema,
+  checkpoint_id: z.string(),
+  prompt_text: z.string(),
+  choices: lessonChoiceSchema,
+  correct_choice: z.enum(['a', 'b', 'c', 'd']).nullable().optional(),
+  explanation: z.string().nullable().optional(),
+  reason_for_check: z.string().nullable().optional(),
 })
 
 export const lessonRuntimeSchema = z.object({
@@ -68,6 +79,7 @@ export const sessionTurnResponseSchema = z.object({
   audio: audioDescriptorSchema.nullable(),
   lesson: lessonPointerSchema.nullable().optional(),
   lesson_runtime: lessonRuntimeSchema.nullable().optional(),
+  interactive_checkpoint: interactiveCheckpointSchema.nullable().optional(),
   debug: z
     .object({
       timings_ms: z.record(z.string(), z.number()),
@@ -154,6 +166,7 @@ export const lessonInteractionResponseSchema = z.object({
   status: lessonAssignmentStatusSchema,
   audio: audioDescriptorSchema.nullable(),
   runtime: lessonRuntimeSchema,
+  interactive_checkpoint: interactiveCheckpointSchema.nullable().optional(),
 })
 
 export const parentSessionSummarySchema = z.object({
@@ -175,6 +188,8 @@ export const parentSessionTurnSchema = z.object({
   created_at: z.string(),
   transcript: z.string(),
   assistant_text: z.string(),
+  assistant_example: z.string().nullable().optional(),
+  interactive_checkpoint: interactiveCheckpointSchema.nullable().optional(),
   input_label: safeguardLabelSchema,
   output_label: safeguardLabelSchema.nullable(),
   blocked: z.boolean(),
@@ -212,7 +227,9 @@ export type SafeguardLabel = z.infer<typeof safeguardLabelSchema>
 export type SafeguardResult = z.infer<typeof safeguardResultSchema>
 export type LessonStepType = z.infer<typeof lessonStepTypeSchema>
 export type LessonInputMode = z.infer<typeof lessonInputModeSchema>
+export type InteractionSource = z.infer<typeof interactionSourceSchema>
 export type LessonChoiceMap = z.infer<typeof lessonChoiceSchema>
+export type InteractiveCheckpoint = z.infer<typeof interactiveCheckpointSchema>
 export type LessonRuntime = z.infer<typeof lessonRuntimeSchema>
 export type SessionTurnResponse = z.infer<typeof sessionTurnResponseSchema>
 export type LessonListItem = z.infer<typeof lessonListItemSchema>

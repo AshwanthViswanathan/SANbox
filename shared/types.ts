@@ -6,6 +6,8 @@ export type {
   ContinueLessonRequest,
   DeviceLessonAssignment,
   DeviceLessonState,
+  InteractionSource,
+  InteractiveCheckpoint,
   LessonChoiceMap,
   LessonListItem,
   LessonAssignmentStatus,
