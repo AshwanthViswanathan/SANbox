@@ -4,6 +4,7 @@ import { ArrowUpRight, Clock3, ShieldAlert } from 'lucide-react'
 import sereneBeachImage from '@/docs/serene-beach-landscape-calm-waters-gentle-waves-free-vector.jpg'
 
 import { EmptyState } from '@/components/app/empty-state'
+import { SessionDeleteButton } from '@/components/app/session-delete-button'
 import { ModeBadge } from '@/components/app/teachbox-badges'
 import { Button } from '@/components/ui/button'
 import { getParentSessions } from '@/lib/parent-dashboard-data'
@@ -41,7 +42,7 @@ export default async function SessionsPage({
 
   return (
     <div className="space-y-8">
-      <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 pt-6 pb-2 md:px-6 md:pt-7 md:pb-3">
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <Image
             src={sereneBeachImage}
@@ -54,20 +55,10 @@ export default async function SessionsPage({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_34%)]" />
         </div>
 
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="stitch-heading text-5xl md:text-6xl">Sessions</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="stitch-card border-l-4 border-l-primary px-5 py-5">
-              <p className="stitch-label">Weekly activity</p>
-              <p className="stitch-heading mt-2 text-3xl text-primary">{sessions.reduce((sum, s) => sum + s.turn_count, 0)} Turns</p>
-            </div>
-            <div className="stitch-card border-l-4 border-l-tertiary px-5 py-5">
-              <p className="stitch-label">Safety flags</p>
-              <p className="stitch-heading mt-2 text-3xl text-tertiary">{sessions.filter((s) => s.flagged_count > 0).length} Flags</p>
-            </div>
-          </div>
+        <div className="flex flex-col justify-center max-w-3xl space-y-4 px-1 py-5 sm:px-2">
+          <h2 className="stitch-heading text-4xl md:text-5xl text-slate-900 drop-shadow-sm">
+            Sessions
+          </h2>
         </div>
       </section>
 
@@ -132,13 +123,18 @@ export default async function SessionsPage({
                   <SessionMetric label="Visibility" value={session.flagged_count > 0 ? 'Review' : 'Clear'} />
                 </div>
 
-                <div className="flex items-center lg:justify-end">
+                <div className="flex flex-col gap-2 lg:items-end">
                   <Button asChild>
                     <Link href={`/dashboard/sessions/${session.session_id}`}>
                       Open session
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
                   </Button>
+                  <SessionDeleteButton
+                    sessionId={session.session_id}
+                    sessionLabel={`session ${session.session_id}`}
+                    buttonClassName="lg:w-auto"
+                  />
                 </div>
               </div>
             </article>

@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import { Bot, Headphones, ShieldAlert, UserRound } from 'lucide-react'
 
+import { FlagDeleteButton } from '@/components/app/flag-delete-button'
 import { PageHeader } from '@/components/app/page-header'
+import { SessionDeleteButton } from '@/components/app/session-delete-button'
 import { ModeBadge, SafeguardBadge } from '@/components/app/teachbox-badges'
 import { LatexText } from '@/components/pi/latex-text'
 import { getLessons, getParentSessionDetail, getSessionSummaryById } from '@/lib/parent-dashboard-data'
@@ -30,18 +32,11 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     <div className="space-y-8">
       <PageHeader
         title={`Session ${id}`}
-        description={`Review the turn-by-turn timeline, safeguard labels, and lesson context for this conversation.`}
         badge={summary.flagged_count > 0 ? 'REVIEW' : 'CLEAR'}
       />
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <SessionMetaCard label="Device" value={summary.device_id} />
-            <SessionMetaCard label="Started" value={formatDateTime(summary.started_at)} />
-            <SessionMetaCard label="Last turn" value={formatDateTime(summary.last_turn_at)} />
-          </div>
-
           <div className="stitch-panel overflow-hidden p-2">
             <div className="rounded-[1.5rem] bg-white/70 px-5 py-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -67,6 +62,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             <div className="space-y-6 bg-surface-container-low/40 px-6 py-6 md:px-8">
               {detail.turns.map((turn, index) => {
                 const blocked = turn.blocked
+                const flagged =
+                  turn.input_label !== 'SAFE' ||
+                  (turn.output_label !== null && turn.output_label !== 'SAFE')
 
                 return (
                   <div key={turn.turn_id} className="relative">
@@ -109,6 +107,14 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                               <span className="inline-flex items-center rounded-full bg-destructive px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-destructive-foreground">
                                 BLOCKED
                               </span>
+                            )}
+                            {(flagged || blocked) && (
+                              <FlagDeleteButton
+                                sessionId={id}
+                                turnId={turn.turn_id}
+                                size="sm"
+                                buttonClassName="ml-auto w-auto"
+                              />
                             )}
                           </div>
                           <div

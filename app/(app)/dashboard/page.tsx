@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import shorelineImage from '@/docs/at-sunset-flamingo-on-lake-scene-vector-21803974.avif'
 
+import { FlagDeleteButton } from '@/components/app/flag-delete-button'
 import { ModeBadge, SafeguardBadge } from '@/components/app/teachbox-badges'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/app/empty-state'
@@ -203,36 +204,48 @@ export default async function DashboardOverview() {
           </div>
 
           {flaggedTurns.length === 0 ? (
-            <div className="px-2">
-              <EmptyState
-                icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
-                title="No flagged turns"
-                description="Everything in the current demo sessions passed through cleanly."
-              />
+            <div className="px-2 py-4">
+              <div className="rounded-[1.5rem] bg-white ring-1 ring-slate-900/5 shadow-sm p-8 flex flex-col items-center justify-center text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 mb-4">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">No flagged turns</h3>
+                <p className="mt-2 text-sm font-medium text-slate-500 max-w-[250px] leading-relaxed">
+                  Everything in the current demo sessions passed through cleanly.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-3 px-2 py-4">
               {flaggedTurns.slice(0, 4).map(({ sessionId, deviceId, mode, turn }, index) => {
                 return (
-                <Link
-                  key={turn.turn_id}
-                  href={`/dashboard/sessions/${sessionId}`}
-                  className={`group relative block rounded-[1.5rem] px-5 py-5 ring-1 ring-slate-900/5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md ${listCardSurfaces[(index + 1) % listCardSurfaces.length]}`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <SafeguardBadge label={turn.input_label} />
-                      <ModeBadge mode={mode} />
+                  <div
+                    key={turn.turn_id}
+                    className={`group relative rounded-[1.5rem] px-5 py-5 ring-1 ring-slate-900/5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md ${listCardSurfaces[(index + 1) % listCardSurfaces.length]}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <SafeguardBadge label={turn.input_label} />
+                        <ModeBadge mode={mode} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] font-bold text-slate-500">{formatTime(turn.created_at)}</p>
+                        <FlagDeleteButton
+                          sessionId={sessionId}
+                          turnId={turn.turn_id}
+                        />
+                      </div>
                     </div>
-                    <p className="text-[11px] font-bold text-slate-500">{formatTime(turn.created_at)}</p>
+                    <Link href={`/dashboard/sessions/${sessionId}`} className="block">
+                      <p className="mt-4 text-sm font-bold text-slate-900">{turn.transcript}</p>
+                      <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-600">{turn.assistant_text}</p>
+                      <p className="mt-4 text-[11px] font-mono font-medium text-slate-400">
+                        {sessionId} - {deviceId}
+                      </p>
+                    </Link>
                   </div>
-                  <p className="mt-4 text-sm font-bold text-slate-900">{turn.transcript}</p>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-600">{turn.assistant_text}</p>
-                  <p className="mt-4 text-[11px] font-mono font-medium text-slate-400">
-                    {sessionId} - {deviceId}
-                  </p>
-                </Link>
-              )})}
+                )
+              })}
             </div>
           )}
         </div>

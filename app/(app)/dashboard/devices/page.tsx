@@ -28,10 +28,10 @@ export default async function DevicesPage() {
       </div>
 
       {devices.length === 0 ? (
-        <div className="stitch-card px-6 py-8">
-          <p className="stitch-heading text-2xl">No SANbox devices registered yet</p>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Open <span className="font-mono">/pi</span> on a teammate device first. As soon as that page loads,
+        <div className="bg-white rounded-[1.5rem] ring-1 ring-slate-900/5 shadow-sm px-8 py-10 text-center">
+          <p className="text-2xl font-bold tracking-tight text-slate-900">No SANbox devices registered yet</p>
+          <p className="mt-3 max-w-2xl mx-auto text-sm leading-6 text-slate-500">
+            Open <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md">/pi</span> on a teammate device first. As soon as that page loads,
             the demo will register itself here and you can assign a lesson.
           </p>
         </div>
@@ -47,7 +47,7 @@ export default async function DevicesPage() {
           const sourceLabel = getSourceLabel(device.platform)
 
           return (
-            <article key={device.id} className="stitch-card overflow-hidden">
+            <article key={device.id} className="bg-white rounded-[1.5rem] ring-1 ring-slate-900/5 shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md">
               <div className="grid gap-4 px-5 py-5 lg:grid-cols-[1fr_1.15fr]">
                 <div className="flex h-full flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
@@ -234,18 +234,18 @@ export default async function DevicesPage() {
 
 function DeviceStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="stitch-card px-5 py-5">
-      <p className="stitch-label">{label}</p>
-      <p className="stitch-heading mt-2 text-2xl">{value}</p>
+    <div className="bg-white rounded-[1.5rem] ring-1 ring-slate-900/5 shadow-sm px-6 py-6 transition-all hover:-translate-y-1 hover:shadow-md">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{value}</p>
     </div>
   )
 }
 
 function DeviceMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">
-      <p className="stitch-label">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
+    <div className="rounded-[1.25rem] bg-slate-50 px-5 py-4 ring-1 ring-slate-900/5">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-bold tracking-tight text-slate-900">{value}</p>
     </div>
   )
 }

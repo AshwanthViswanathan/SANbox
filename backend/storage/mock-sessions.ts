@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { DetailedSafeguardResult } from '@/backend/providers/safeguard'
-import { composeAssistantLogText } from '@/backend/utils/assistant-response'
+import { composeAssistantLogText, parseAssistantResponse } from '@/backend/utils/assistant-response'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   ParentSessionDetailResponse,
@@ -54,6 +54,11 @@ type DbTurnIndexRow = {
 type DeviceOwnerRow = {
   id: string
   owner_user_id: string | null
+}
+
+type SessionTurnLookupRow = {
+  id: string
+  session_id: string
 }
 
 type StorageReader = Pick<SupabaseClient, 'from'>
@@ -229,15 +234,163 @@ export async function buildSessionDetail(
       mode: (session as SessionDetailRow).mode,
       lesson_id: (session as SessionDetailRow).lesson_id,
     },
-    turns: ((turns ?? []) as SessionTurnRow[]).map((turn) => ({
-      turn_id: turn.id,
-      created_at: turn.created_at,
-      transcript: turn.transcript,
-      assistant_text: turn.assistant_text,
-      input_label: turn.input_safeguard_label,
-      output_label: turn.output_safeguard_label,
-      blocked: turn.assistant_blocked,
-    })),
+    turns: ((turns ?? []) as SessionTurnRow[]).map((turn) => {
+      const assistant = parseAssistantResponse(turn.assistant_text)
+
+      return {
+        turn_id: turn.id,
+        created_at: turn.created_at,
+        transcript: turn.transcript,
+        assistant_text: assistant.explanation,
+        assistant_example: assistant.example,
+        input_label: turn.input_safeguard_label,
+        output_label: turn.output_safeguard_label,
+        blocked: turn.assistant_blocked,
+      }
+    }),
+  }
+}
+
+export async function deleteSessionForOwner(ownerUserId: string, sessionId: string) {
+  const admin = createAdminClient()
+  const { data: session, error: sessionError } = await admin
+    .from('sessions')
+    .select('id, device_id, owner_user_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  if (sessionError) {
+    throw new Error(`Failed to look up session: ${sessionError.message}`)
+  }
+
+  if (!session) {
+    return { status: 'not_found' as const }
+  }
+
+  if (!(await canAccessSession(admin, ownerUserId, session))) {
+    return { status: 'forbidden' as const }
+  }
+
+  const { error: deviceResetError } = await admin
+    .from('devices')
+    .update({
+      active_session_id: null,
+      current_step_id: null,
+    })
+    .eq('active_session_id', sessionId)
+
+  if (deviceResetError) {
+    throw new Error(`Failed to clear active device session: ${deviceResetError.message}`)
+  }
+
+  const { error: turnsDeleteError } = await admin
+    .from('turns')
+    .delete()
+    .eq('session_id', sessionId)
+
+  if (turnsDeleteError) {
+    throw new Error(`Failed to delete session turns: ${turnsDeleteError.message}`)
+  }
+
+  const { error: sessionDeleteError } = await admin
+    .from('sessions')
+    .delete()
+    .eq('id', sessionId)
+
+  if (sessionDeleteError) {
+    throw new Error(`Failed to delete session: ${sessionDeleteError.message}`)
+  }
+
+  return {
+    status: 'deleted' as const,
+    session_id: sessionId,
+  }
+}
+
+export async function deleteTurnForOwner(
+  ownerUserId: string,
+  sessionId: string,
+  turnId: string
+) {
+  const admin = createAdminClient()
+  const { data: session, error: sessionError } = await admin
+    .from('sessions')
+    .select('id, device_id, owner_user_id, started_at')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  if (sessionError) {
+    throw new Error(`Failed to look up session for turn deletion: ${sessionError.message}`)
+  }
+
+  if (!session) {
+    return { status: 'session_not_found' as const }
+  }
+
+  if (!(await canAccessSession(admin, ownerUserId, session))) {
+    return { status: 'forbidden' as const }
+  }
+
+  const { data: turn, error: turnError } = await admin
+    .from('turns')
+    .select('id, session_id')
+    .eq('id', turnId)
+    .maybeSingle()
+
+  if (turnError) {
+    throw new Error(`Failed to look up turn: ${turnError.message}`)
+  }
+
+  if (!turn || (turn as SessionTurnLookupRow).session_id !== sessionId) {
+    return { status: 'turn_not_found' as const }
+  }
+
+  const { error: deleteError } = await admin
+    .from('turns')
+    .delete()
+    .eq('id', turnId)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete turn: ${deleteError.message}`)
+  }
+
+  const { data: remainingTurns, error: remainingTurnsError } = await admin
+    .from('turns')
+    .select('created_at, input_safeguard_label, output_safeguard_label, assistant_blocked')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+
+  if (remainingTurnsError) {
+    throw new Error(`Failed to reload session turns after delete: ${remainingTurnsError.message}`)
+  }
+
+  const turnRows = (remainingTurns ?? []) as Array<{
+    created_at: string
+    input_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK'
+    output_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK' | null
+    assistant_blocked: boolean
+  }>
+
+  const flaggedCount = turnRows.filter((turnRow) => isFlaggedTurn(turnRow)).length
+  const lastTurnAt = turnRows[0]?.created_at ?? (session as { started_at?: string | null }).started_at ?? new Date().toISOString()
+
+  const { error: sessionUpdateError } = await admin
+    .from('sessions')
+    .update({
+      turn_count: turnRows.length,
+      flagged_count: flaggedCount,
+      last_turn_at: lastTurnAt,
+    })
+    .eq('id', sessionId)
+
+  if (sessionUpdateError) {
+    throw new Error(`Failed to update session counters after turn delete: ${sessionUpdateError.message}`)
+  }
+
+  return {
+    status: 'deleted' as const,
+    session_id: sessionId,
+    turn_id: turnId,
   }
 }
 
@@ -275,7 +428,7 @@ async function getOwnedDeviceIds(reader: StorageReader, ownerUserId: string) {
 async function canAccessSession(
   reader: StorageReader,
   ownerUserId: string,
-  session: SessionDetailRow
+  session: Pick<SessionDetailRow, 'device_id' | 'owner_user_id'>
 ) {
   if (session.owner_user_id === ownerUserId) {
     return true
