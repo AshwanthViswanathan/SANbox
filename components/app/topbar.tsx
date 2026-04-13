@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { DashboardSidebar } from './sidebar'
@@ -53,14 +53,11 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           <p className="stitch-readable-surface px-4 py-2 text-sm font-semibold md:hidden">{title}</p>
         </div>
 
-        <div className="stitch-panel flex items-center gap-2 px-3 py-2">
-          <div className="hidden lg:block text-right mr-2">
+        <div className="stitch-panel flex items-center gap-3 px-4 py-2">
+          <div className="hidden lg:block text-right">
             <p className="text-sm font-semibold">{email}</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">SANbox family account</p>
           </div>
-          <button className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-sky-100 hover:text-foreground" aria-label="Notifications">
-            <Bell className="w-4 h-4" />
-          </button>
           <SignOutButton />
         </div>
       </header>

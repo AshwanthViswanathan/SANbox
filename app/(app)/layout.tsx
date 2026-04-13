@@ -25,14 +25,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-transparent">
+    <div className="flex min-h-screen bg-transparent">
       <div className="hidden md:flex">
         <DashboardSidebar email={user.email ?? 'Signed in'} />
       </div>
 
-      <div className="flex flex-1 min-w-0 flex-col overflow-hidden md:ml-72">
+      <div className="flex min-w-0 flex-1 flex-col md:ml-72">
         <DashboardTopbar email={user.email ?? 'Signed in'} />
-        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-2 sm:px-10">
+        <main className="flex-1 px-6 pb-10 pt-2 sm:px-10">
           <div className="stitch-page-shell px-4 py-5 sm:px-6 sm:py-6">
             {children}
           </div>

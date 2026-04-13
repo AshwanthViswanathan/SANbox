@@ -29,15 +29,6 @@ export default async function DevicesPage() {
         />
       </div>
 
-      <div className="stitch-panel px-6 py-6">
-        <p className="stitch-label text-tertiary">Device controls</p>
-        <p className="stitch-heading mt-2 text-2xl">Parent pause and power controls</p>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Each demo keeps its own device ID. Have teammates open <span className="font-mono">/pi</span>,
-          then assign lessons to the matching device card here.
-        </p>
-      </div>
-
       {devices.length === 0 ? (
         <div className="stitch-card px-6 py-8">
           <p className="stitch-heading text-2xl">No SANbox devices registered yet</p>

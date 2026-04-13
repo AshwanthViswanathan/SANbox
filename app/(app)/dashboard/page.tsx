@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import shorelineImage from '@/docs/at-sunset-flamingo-on-lake-scene-vector-21803974.avif'
 
-import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge, SafeguardBadge } from '@/components/app/teachbox-badges'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/app/empty-state'
@@ -74,12 +73,6 @@ export default async function DashboardOverview() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="SANbox Dashboard"
-        description="Dive into your child's learning sessions, review flagged turns, and keep an eye on lesson use."
-        badge="DEMO"
-      />
-
       <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <Image
@@ -94,16 +87,12 @@ export default async function DashboardOverview() {
         </div>
 
         <div className="space-y-4">
-          <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
-            Monitoring hub
-          </div>
           <div className="space-y-2">
             <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
-              Explore the shoreline of your child's latest sessions.
+              SANbox Dashboard
             </h2>
-            <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-              The dashboard stays sessions-first: recent activity, safety review, device health, and
-              lesson progress are all visible in one calm monitoring surface.
+            <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
+              Dive into your child's learning sessions, review flagged turns, and keep an eye on lesson use.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

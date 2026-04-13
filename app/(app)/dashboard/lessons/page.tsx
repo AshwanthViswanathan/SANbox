@@ -1,7 +1,7 @@
-import { BookOpen } from 'lucide-react'
+import Image from 'next/image'
+import surfboardsImage from '@/docs/surfboards-on-sandy-beach-summer-surfing-activity-sports-recreation-cartoon-illustration-tropical-landscape-with-palm-trees-rocks-in-water-and-mountains-on-horizon-sea-leisure-hobby-vector.jpg'
 
 import { LessonAssignmentPanel } from '@/components/app/lesson-assignment-panel'
-import { PageHeader } from '@/components/app/page-header'
 import { getDeviceSnapshots, getLessonUsage } from '@/lib/parent-dashboard-data'
 
 export default async function LessonsPage() {
@@ -12,11 +12,31 @@ export default async function LessonsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Lessons"
-        description="Markdown-backed lesson modules available to the SANbox parent dashboard."
-        badge={`${activeLessons}/${lessons.length} ACTIVE`}
-      />
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <Image
+            src={surfboardsImage}
+            alt=""
+            fill
+            priority
+            className="object-cover object-[center_28%]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.94),rgba(252,247,225,0.88),rgba(252,247,225,0.66))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_34%)]" />
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="stitch-heading text-3xl sm:text-4xl">Lessons</h1>
+            <span className="stitch-pill bg-primary-container/20 text-primary">
+              {`${activeLessons}/${lessons.length} ACTIVE`}
+            </span>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Markdown-backed lesson modules available to the SANbox parent dashboard.
+          </p>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         <LessonStat label="Lesson library" value={String(lessons.length)} />
@@ -27,15 +47,6 @@ export default async function LessonsPage() {
         />
       </div>
 
-      <div className="stitch-panel px-6 py-6">
-        <p className="stitch-label text-tertiary">Lesson assignment</p>
-        <p className="stitch-heading mt-2 text-2xl">Queue lessons without leaving the library</p>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Pick a lesson, assign it to one or more devices, and the device will see that lesson as its next parent-approved guided run.
-          {latestLessonTurn ? ` Most recent lesson activity: ${formatDate(latestLessonTurn)}.` : ''}
-        </p>
-      </div>
-
       <div className="grid gap-5 xl:grid-cols-2">
         {lessons.map((lesson) => {
           const isActive = lesson.usageCount > 0
@@ -44,11 +55,7 @@ export default async function LessonsPage() {
             <article key={lesson.lesson_id} className="stitch-card overflow-hidden">
               <div className="bg-[linear-gradient(135deg,rgba(94,177,252,0.14),rgba(255,255,255,0.92))] px-5 py-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-2">
-                    <div className="stitch-pill bg-white/80 text-muted-foreground">
-                      <BookOpen className="h-3 w-3" />
-                      {lesson.lesson_id}
-                    </div>
+                  <div>
                     <h2 className="text-lg font-semibold tracking-tight text-foreground">{lesson.title}</h2>
                   </div>
                   <span className="rounded-full bg-accent/12 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-accent">
