@@ -451,7 +451,6 @@ export default function PiDisplayPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const [autoListenEnabled, setAutoListenEnabled] = useState(true)
-  const [isTestingSpeaker, setIsTestingSpeaker] = useState(false)
   const [isLessonLoading, setIsLessonLoading] = useState(false)
   const [lessonState, setLessonState] = useState<DeviceLessonState | null>(null)
   const [lessonInteraction, setLessonInteraction] = useState<LessonInteractionResponse | null>(null)
@@ -464,31 +463,25 @@ export default function PiDisplayPage() {
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
-  const shouldRestartListeningAfterInterruptRef = useRef(false)
   const autoRestartTimeoutRef = useRef<number | null>(null)
   const activeAudioRef = useRef<HTMLAudioElement | null>(null)
   const activePlaybackStopRef = useRef<(() => void) | null>(null)
   const persistExampleAcrossAutoListenRef = useRef(false)
+  const preserveScreenOnPlaybackStopRef = useRef(false)
 
   const interruptPlaybackAndStartRecording = () => {
     cancelAutoRestart()
-    shouldRestartListeningAfterInterruptRef.current = true
-    persistExampleAcrossAutoListenRef.current = false
+    preserveScreenOnPlaybackStopRef.current = true
     stopActivePlayback()
-    setAssistantText('')
-    setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
     setDebugTimings(null)
     setTranscript('Listening...')
     setState('listening')
 
     window.setTimeout(() => {
-      if (!shouldRestartListeningAfterInterruptRef.current) {
-        return
-      }
-
-      void startRecording()
+      void startRecording({
+        preserveAssistantContent: true,
+        preserveExample: true,
+      })
     }, 0)
   }
 
@@ -803,18 +796,13 @@ export default function PiDisplayPage() {
   const stopConversation = () => {
     cancelAutoRestart()
     isStoppingRef.current = true
-    shouldRestartListeningAfterInterruptRef.current = false
     persistExampleAcrossAutoListenRef.current = false
+    preserveScreenOnPlaybackStopRef.current = true
     stopActivePlayback()
     cleanupRecorder()
     setIsRecording(false)
-    setAssistantText('')
-    setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
     setDebugTimings(null)
     setState('idle')
-    setTranscript(IDLE_TEXT)
     isStoppingRef.current = false
   }
 
@@ -1037,45 +1025,6 @@ export default function PiDisplayPage() {
     }
   }
 
-  const testSpeaker = async () => {
-    if (isTestingSpeaker || isRecording || isStoppingRef.current) return
-
-    setIsTestingSpeaker(true)
-    cancelAutoRestart()
-    stopActivePlayback()
-    setAssistantText('This is a speaker test.')
-    setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
-    setState('speaking')
-    setTranscript('Playing speaker test...')
-
-    try {
-      const testAudioUrl = await createTestToneDataUrl()
-      await playAssistantAudio(
-        testAudioUrl,
-        'This is a speaker test.',
-        activeAudioRef,
-        activePlaybackStopRef
-      )
-      setState('idle')
-      setTranscript(IDLE_TEXT)
-    } catch (error) {
-      if (isPlaybackInterruptedError(error)) {
-        setState('idle')
-        setTranscript(IDLE_TEXT)
-        return
-      }
-      setState('error')
-      setTranscript(
-        error instanceof Error ? error.message : 'Speaker test failed on this browser.'
-      )
-    } finally {
-      activeAudioRef.current = null
-      setIsTestingSpeaker(false)
-    }
-  }
-
   const getContainerStyle = () => {
     return 'bg-surface text-foreground'
   }
@@ -1266,16 +1215,17 @@ export default function PiDisplayPage() {
         return
       } catch (playbackError) {
         if (isPlaybackInterruptedError(playbackError)) {
-          if (shouldRestartListeningAfterInterruptRef.current) {
-            return
-          }
+          const preserveScreen = preserveScreenOnPlaybackStopRef.current
+          preserveScreenOnPlaybackStopRef.current = false
           persistExampleAcrossAutoListenRef.current = false
           setState('idle')
-          setTranscript(IDLE_TEXT)
-          setAssistantText('')
-          setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+          if (!preserveScreen) {
+            setTranscript(IDLE_TEXT)
+            setAssistantText('')
+            setAssistantExample(null)
+            setIsExampleExpanded(false)
+            setExampleNeedsExpansion(false)
+          }
           return
         }
         setState('error')
@@ -1287,9 +1237,10 @@ export default function PiDisplayPage() {
               : 'Audio playback failed on this browser.'
         )
         return
-      } finally {
-        activeAudioRef.current = null
-      }
+    } finally {
+      preserveScreenOnPlaybackStopRef.current = false
+      activeAudioRef.current = null
+    }
     } catch (error) {
       setState('error')
       setTranscript(error instanceof Error ? error.message : 'Voice request failed.')
@@ -1298,7 +1249,10 @@ export default function PiDisplayPage() {
     }
   }
 
-  const startRecording = async (options?: { preserveExample?: boolean }) => {
+  const startRecording = async (options?: {
+    preserveExample?: boolean
+    preserveAssistantContent?: boolean
+  }) => {
     if (
       !isSupported ||
       isRecording ||
@@ -1310,10 +1264,11 @@ export default function PiDisplayPage() {
     }
 
     try {
-      shouldRestartListeningAfterInterruptRef.current = false
       cancelAutoRestart()
       setDebugTimings(null)
-      setAssistantText('')
+      if (!options?.preserveAssistantContent) {
+        setAssistantText('')
+      }
       if (!options?.preserveExample) {
         persistExampleAcrossAutoListenRef.current = false
         setAssistantExample(null)
@@ -1430,7 +1385,10 @@ export default function PiDisplayPage() {
       return
     }
 
-    if (state === 'speaking' || state === 'blocked') {
+    if (
+      (state === 'speaking' || state === 'blocked') &&
+      lessonState?.status !== 'active'
+    ) {
       interruptPlaybackAndStartRecording()
       return
     }
@@ -1441,6 +1399,12 @@ export default function PiDisplayPage() {
   const piLoginPath = deviceIdRef.current
     ? `/pi?device_id=${encodeURIComponent(deviceIdRef.current)}`
     : '/pi'
+
+  const canInterruptSpeech =
+    !isRecording &&
+    !isLessonLoading &&
+    (state === 'speaking' || state === 'blocked') &&
+    lessonState?.status !== 'active'
 
   return (
     <div
@@ -1580,9 +1544,10 @@ export default function PiDisplayPage() {
                   onClick={toggleRecording}
                   disabled={
                     !isSupported ||
-                    isStoppingRef.current ||
-                    isTestingSpeaker ||
-                    (lessonState?.status === 'active' && !lessonAllowsVoiceInput) ||
+                    (isStoppingRef.current && !canInterruptSpeech) ||
+                    (lessonState?.status === 'active' &&
+                      !lessonAllowsVoiceInput &&
+                      !isRecording) ||
                     isLessonLoading
                   }
                   className={cn(
@@ -1616,7 +1581,7 @@ export default function PiDisplayPage() {
                   <button
                     type="button"
                     onClick={() => void startLesson()}
-                    disabled={isLessonLoading || isRecording || isTestingSpeaker}
+                    disabled={isLessonLoading || isRecording}
                     className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}
@@ -1625,43 +1590,10 @@ export default function PiDisplayPage() {
                 <button
                   type="button"
                   onClick={stopConversation}
-                  disabled={isTestingSpeaker || isLessonLoading}
+                  disabled={isLessonLoading}
                   className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Stop Conversation
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void testSpeaker()}
-                  disabled={
-                    !isSupported ||
-                    isRecording ||
-                    isStoppingRef.current ||
-                    isTestingSpeaker ||
-                    isLessonLoading
-                  }
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={() => void startRecording()}
-                  onMouseUp={() => void stopRecorderAndSend('manual')}
-                  onMouseLeave={() => void stopRecorderAndSend('manual')}
-                    onTouchStart={() => void startRecording()}
-                    onTouchEnd={() => void stopRecorderAndSend('manual')}
-                  disabled={
-                    isTestingSpeaker ||
-                    isLessonLoading ||
-                    (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
-                  }
-                  className={cn(
-                    'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
-                    'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  )}
-                >
-                  Hold To Talk
+                  Stop Audio
                 </button>
                 <button
                   type="button"
@@ -1686,7 +1618,7 @@ export default function PiDisplayPage() {
                     setState('idle')
                     setTranscript(IDLE_TEXT)
                   }}
-                  disabled={isTestingSpeaker || isLessonLoading}
+                  disabled={isLessonLoading}
                   className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   New Session
@@ -1700,7 +1632,7 @@ export default function PiDisplayPage() {
                       cancelAutoRestart()
                     }
                   }}
-                  disabled={isTestingSpeaker || isLessonLoading || lessonState?.status === 'active'}
+                  disabled={isLessonLoading || lessonState?.status === 'active'}
                   className={cn(
                     'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
                     autoListenEnabled
