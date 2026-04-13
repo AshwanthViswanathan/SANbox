@@ -1,6 +1,5 @@
 import { Cpu, MessageSquareText, Mic, Radio, Volume2, Wifi, WifiOff } from 'lucide-react'
 
-import { DeviceCommandPanel } from '@/components/app/device-command-panel'
 import { DeviceLessonPanel } from '@/components/app/device-lesson-panel'
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge } from '@/components/app/teachbox-badges'
@@ -113,7 +112,7 @@ export default async function DevicesPage() {
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">Battery reserve {device.battery}%</p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Parent controls updated {formatDateTime(device.controlsUpdatedAt)}
+                      Controls updated {formatDateTime(device.controlsUpdatedAt)}
                     </p>
                   </div>
 
@@ -161,11 +160,6 @@ export default async function DevicesPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DeviceMetric label="Recent sessions" value={String(device.recentSessions)} />
                   <DeviceMetric label="Flagged turns" value={String(device.flaggedTurns)} />
-                  <DeviceCommandPanel
-                    deviceId={device.id}
-                    deviceName={device.name}
-                    isOnline={isOnline}
-                  />
                   <DeviceLessonPanel
                     deviceId={device.id}
                     deviceName={device.name}
@@ -184,7 +178,7 @@ export default async function DevicesPage() {
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
                       {microphoneOff
-                        ? 'Parent control is off.'
+                        ? 'Device control is off.'
                         : device.microphone === 'ready'
                           ? 'Ready for voice input.'
                           : 'Hardware check recommended.'}
@@ -202,7 +196,7 @@ export default async function DevicesPage() {
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
                       {speakerOff
-                        ? 'Parent control is off.'
+                        ? 'Device control is off.'
                         : device.speaker === 'ready'
                           ? 'Ready for spoken replies.'
                           : 'Hardware check recommended.'}

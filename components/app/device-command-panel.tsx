@@ -104,7 +104,7 @@ export function DeviceCommandPanel({
       const payload = parentDeviceControlResponseSchema.parse(await response.json())
       setControlState(payload.controls)
     } catch {
-      setError('Unable to save parent controls right now.')
+      setError('Unable to save device controls right now.')
     } finally {
       setSaving(false)
     }
@@ -152,7 +152,7 @@ export function DeviceCommandPanel({
     <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4 sm:col-span-2">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-foreground">Parent controls</p>
+          <p className="text-sm font-semibold text-foreground">Device controls</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Calls the parent device-control API and stays separate from the child turn endpoint.
           </p>
