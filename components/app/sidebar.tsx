@@ -8,7 +8,6 @@ import {
   Cpu,
   LayoutDashboard,
   Settings,
-  Sparkles,
   UserRoundSearch,
 } from 'lucide-react'
 
@@ -34,12 +33,12 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
     <aside className="stitch-panel fixed left-0 top-0 z-40 hidden h-[calc(100vh-2rem)] w-72 shrink-0 flex-col p-6 text-sidebar-foreground md:flex">
       <div className="mb-8 px-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full coastal-gradient text-white shadow-lg shadow-primary/20">
-            <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={32} height={32} className="object-contain" />
+          <span className="flex h-16 w-16 items-center justify-center">
+            <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={52} height={52} className="object-contain" />
           </span>
           <div>
-            <div className="stitch-heading text-xl text-primary">SANbox Explorer</div>
-            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-muted-foreground">San Dashboard</div>
+            <div className="stitch-heading text-xl text-primary">SANbox</div>
+            <div className="text-xs font-semibold tracking-[0.04em] text-muted-foreground">Voice learning companion</div>
           </div>
         </div>
       </div>
@@ -48,10 +47,6 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
         <div className="rounded-[1.5rem] bg-sky-50/80 px-4 py-4">
           <div className="stitch-label">Active family</div>
           <div className="mt-2 truncate text-sm font-semibold text-foreground">{email}</div>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary-container/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-            <Sparkles className="h-3 w-3" />
-            Beachcomber level 5
-          </div>
         </div>
       </div>
 
@@ -83,15 +78,6 @@ export function DashboardSidebar({ email }: DashboardSidebarProps) {
           })}
         </ul>
       </nav>
-
-      <div className="mt-6 border-t border-[color:rgba(178,173,154,0.16)] px-3 pt-6">
-        <div className="rounded-[1.5rem] bg-surface-container-low px-4 py-4 text-xs text-sidebar-foreground/70">
-          Beach theme live
-          <div className="mt-1 text-[10px] font-mono uppercase tracking-[0.2em] text-sidebar-foreground/40">
-            San dashboard preview
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }

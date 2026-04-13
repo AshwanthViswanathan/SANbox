@@ -3,7 +3,7 @@ import Image from 'next/image'
 
 export function Footer() {
   return (
-    <footer className="py-10">
+    <footer className="pt-1 pb-10">
       <div className="stitch-readable-surface mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-4 sm:flex-row sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Image src="/sans-faces/San-Normal-Thinking-Listening.svg" alt="SANbox Logo" width={28} height={28} className="object-contain" />

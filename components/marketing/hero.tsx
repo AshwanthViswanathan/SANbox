@@ -12,8 +12,8 @@ export function Hero() {
       <div className="pointer-events-none absolute -left-24 top-28 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
       <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-primary/16 blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-6rem)] max-w-7xl items-center px-4 pb-16 sm:px-6">
-        <div className="grid w-full items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative mx-auto flex min-h-[calc(100svh-6rem)] max-w-7xl items-center px-4 pb-10 sm:px-6">
+        <div className="grid w-full items-start gap-10 lg:grid-cols-[1fr_1fr] lg:items-stretch">
           <div className="relative isolate py-8 lg:py-14">
             <div className="pointer-events-none absolute inset-x-[-2rem] inset-y-[-1rem] -z-10 overflow-hidden rounded-[2.5rem] opacity-90">
               <Image
@@ -69,15 +69,15 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="relative self-start lg:pl-6">
-            <div className="stitch-panel overflow-hidden border-transparent p-0">
-              <div className="flex items-center justify-between px-6 py-5">
+          <div className="relative lg:pl-2">
+            <div className="stitch-panel h-full overflow-hidden border-transparent bg-white/58 p-0">
+              <div className="flex items-center justify-between px-7 py-6">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">SANbox family dashboard</p>
-                  <p className="text-xs text-muted-foreground">A stitched view of sessions, safeguards, and device health.</p>
+                  <p className="text-base font-semibold text-foreground">SANbox family dashboard</p>
+                  <p className="text-sm text-muted-foreground">A stitched view of sessions, safeguards, and device health.</p>
                 </div>
-                <div className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-secondary-foreground">
-                  <Waves className="h-3 w-3" />
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-[11px] font-mono uppercase tracking-[0.18em] text-secondary-foreground">
+                  <Waves className="h-3.5 w-3.5" />
                   Live session
                 </div>
               </div>
@@ -99,42 +99,44 @@ function DashboardPreview() {
     { label: 'Safeguards', href: '/dashboard/sessions?filter=flagged' },
     { label: 'Settings', href: '/dashboard/settings' },
   ]
+  const previewCardClass =
+    'border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(245,250,252,0.42))] shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm'
 
   return (
-    <div className="grid min-h-[440px] grid-cols-[200px_1fr] gap-3 bg-[linear-gradient(180deg,rgba(247,241,217,0.54),rgba(241,252,250,0.82))] px-5 pb-5 pt-0 text-sidebar-foreground">
-      <div className="stitch-card flex flex-col gap-1 border-transparent px-3 py-4">
-        <div className="mb-2 px-2 py-1.5 text-[11px] font-mono uppercase tracking-widest text-sidebar-foreground/40">
+    <div className="grid min-h-[620px] grid-cols-[240px_1fr] gap-5 bg-transparent px-6 pb-6 pt-0 text-sidebar-foreground">
+      <div className="rounded-[1.75rem] border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(247,241,217,0.34))] px-5 py-6 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm">
+        <div className="mb-4 px-2 py-2 text-sm font-mono uppercase tracking-widest text-sidebar-foreground/40">
           Family cove
         </div>
         {previewLinks.map((item, i) => (
           <Link
             key={item.label}
             href={item.href}
-            className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm ${
+            className={`flex items-center gap-3 rounded-full px-5 py-4 text-lg ${
               i === 0
                 ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
                 : 'text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
             }`}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+            <span className="h-2 w-2 rounded-full bg-current opacity-40" />
             {item.label}
           </Link>
         ))}
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="stitch-card flex items-center justify-between border-transparent px-4 py-4">
+      <div className="flex flex-col gap-4">
+        <div className={`${previewCardClass} rounded-[1.75rem] px-6 py-6`}>
           <div>
-            <div className="text-sm font-semibold text-sidebar-foreground">Session history</div>
-            <div className="font-mono text-xs text-sidebar-foreground/50">family / sanbox-home</div>
+            <div className="text-lg font-semibold text-sidebar-foreground">Session history</div>
+            <div className="font-mono text-base text-sidebar-foreground/50">family / sanbox-home</div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            <span className="font-mono text-xs text-primary">1 live learning wave</span>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+            <span className="font-mono text-base text-primary">1 live learning wave</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-5">
           {[
             { label: 'SANboxes', value: '2' },
             { label: 'Lesson dives', value: '14' },
@@ -143,19 +145,19 @@ function DashboardPreview() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="stitch-card min-w-0 rounded-[1.3rem] border-transparent px-3 py-3.5"
+              className={`${previewCardClass} min-w-0 rounded-[1.3rem] px-5 py-5`}
             >
-              <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-sidebar-foreground/45">
+              <div className="text-xs font-mono uppercase tracking-[0.16em] text-sidebar-foreground/45">
                 {stat.label}
               </div>
-              <div className="mt-2 font-mono text-xl font-bold leading-none text-sidebar-foreground">
+              <div className="mt-4 font-mono text-[2rem] font-bold leading-none text-sidebar-foreground">
                 {stat.value}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="flex-1 space-y-0.5 rounded-[1.75rem] bg-[rgba(17,24,39,0.78)] p-4 font-mono text-[11px] leading-relaxed">
+        <div className="flex-1 space-y-1.5 rounded-[1.75rem] bg-[linear-gradient(180deg,rgba(19,30,46,0.86),rgba(29,43,62,0.82))] p-6 font-mono text-[13px] leading-relaxed shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           {[
             { t: '10:42:01', msg: 'Sanbox is ready and waiting for your child to ask a question.', c: 'text-sky-300' },
             { t: '10:42:03', msg: "The question is checked to make sure the conversation stays child-safe.", c: 'text-slate-300' },
