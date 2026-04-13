@@ -817,21 +817,7 @@ export default function PiDisplayPage() {
   }
 
   const getContainerStyle = () => {
-    switch (state) {
-      case 'idle':
-        return 'bg-surface text-foreground'
-      case 'listening':
-        return 'bg-accent/10 text-accent-foreground'
-      case 'thinking':
-        return 'bg-secondary text-secondary-foreground'
-      case 'speaking':
-        return 'bg-surface text-foreground'
-      case 'blocked':
-      case 'error':
-        return 'bg-destructive/10 text-destructive'
-      default:
-        return 'bg-surface text-foreground'
-    }
+    return 'bg-surface text-foreground'
   }
 
   const getStateIcon = () => {
@@ -839,9 +825,9 @@ export default function PiDisplayPage() {
       case 'idle':
         return <Mic className="w-5 h-5" />
       case 'listening':
-        return <Activity className="w-5 h-5 animate-pulse" />
+        return <Activity className="w-5 h-5" />
       case 'thinking':
-        return <RefreshCw className="w-5 h-5 animate-spin" />
+        return <RefreshCw className="w-5 h-5" />
       case 'speaking':
         return <Mic className="w-5 h-5 opacity-50" />
       case 'blocked':
@@ -857,8 +843,6 @@ export default function PiDisplayPage() {
     cancelAutoRestart()
     isStoppingRef.current = true
     setIsRecording(false)
-    setState('thinking')
-    setTranscript(THINKING_TEXT)
 
     try {
       cleanupRecorder()
@@ -866,22 +850,31 @@ export default function PiDisplayPage() {
       const samples = mergeFloat32Chunks(recorderState.chunks)
       const elapsedMs = Date.now() - recorderState.startedAt
 
-      if (
-        reason === 'auto' &&
-        lessonState?.status === 'active' &&
-        lessonAllowsVoiceInput &&
-        !recorderState.speechDetected
-      ) {
+      if (!recorderState.speechDetected) {
         setState('idle')
-        setTranscript('Ask a question when you are ready.')
+        setTranscript(
+          reason === 'manual' && elapsedMs < 400
+            ? 'Hold the button a little longer before releasing.'
+            : "I didn't hear anything. Try again."
+        )
         setAssistantText('')
-        scheduleAutoRestart()
+        if (lessonState?.status === 'active' && lessonAllowsVoiceInput) {
+          scheduleAutoRestart()
+        } else if (autoListenEnabled) {
+          scheduleAutoRestart()
+        }
         return
       }
 
       if (!samples.length) {
         if (elapsedMs < 400) {
-          throw new Error('Hold the button a little longer before releasing.')
+          setState('idle')
+          setTranscript('Hold the button a little longer before releasing.')
+          setAssistantText('')
+          if (autoListenEnabled) {
+            scheduleAutoRestart()
+          }
+          return
         }
 
         throw new Error('No audio was captured. Check browser microphone permissions.')
@@ -900,6 +893,9 @@ export default function PiDisplayPage() {
       if (lessonInteraction?.lesson.lesson_id) {
         formData.set('lesson_id', lessonInteraction.lesson.lesson_id)
       }
+
+      setState('thinking')
+      setTranscript(THINKING_TEXT)
 
       const response = await fetch('/api/v1/demo/turn', {
         method: 'POST',
@@ -932,6 +928,26 @@ export default function PiDisplayPage() {
               }
             : current
         )
+      }
+
+      const isNoInputResult =
+        result.cosmo_state === 'idle' && !result.audio?.url && !result.assistant.text.trim()
+
+      if (isNoInputResult) {
+        setState('idle')
+        setTranscript(result.transcript)
+        setAssistantText('')
+
+        if (result.lesson_runtime?.input_mode === 'voice') {
+          scheduleAutoRestart()
+        } else if (
+          (reason === 'auto' || autoListenEnabled) &&
+          (!lessonState || lessonState.status !== 'active')
+        ) {
+          scheduleAutoRestart()
+        }
+
+        return
       }
 
       try {
@@ -998,6 +1014,12 @@ export default function PiDisplayPage() {
 
     try {
       cancelAutoRestart()
+      setDebugTimings(null)
+      setAssistantText('')
+      setTranscript('Listening...')
+      setState('listening')
+      setIsRecording(true)
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -1062,13 +1084,8 @@ export default function PiDisplayPage() {
         speechDetected: false,
         lastVoiceAt: null,
       }
-
-      setDebugTimings(null)
-      setAssistantText('')
-      setTranscript('Listening...')
-      setState('listening')
-      setIsRecording(true)
     } catch (error) {
+      setIsRecording(false)
       setState('error')
       setTranscript(
         error instanceof Error ? error.message : 'Microphone access was denied.'
@@ -1092,7 +1109,7 @@ export default function PiDisplayPage() {
   return (
     <div
       className={cn(
-        'h-dvh overflow-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 transition-colors duration-500',
+        'h-dvh overflow-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5',
         getContainerStyle()
       )}
     >
@@ -1122,7 +1139,7 @@ export default function PiDisplayPage() {
               <div className="min-h-0 space-y-2 text-center lg:text-left">
                 <p
                   className={cn(
-                    'text-lg font-semibold leading-snug transition-all duration-300 sm:text-xl lg:text-[1.7rem]',
+                    'text-lg font-semibold leading-snug sm:text-xl lg:text-[1.7rem]',
                     state === 'speaking' ? 'text-primary' : 'opacity-80',
                     '[display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden'
                   )}
@@ -1172,7 +1189,7 @@ export default function PiDisplayPage() {
                       <button
                         type="button"
                         onClick={() => void copyDeviceReference('device_id')}
-                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                       >
                         <Copy className="h-3.5 w-3.5" />
                         {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
@@ -1180,7 +1197,7 @@ export default function PiDisplayPage() {
                       <button
                         type="button"
                         onClick={() => void copyDeviceReference('device_link')}
-                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                       >
                         <Link2 className="h-3.5 w-3.5" />
                         {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
@@ -1211,7 +1228,7 @@ export default function PiDisplayPage() {
                     isLessonLoading
                   }
                   className={cn(
-                    'h-20 w-20 rounded-full border-4 shadow-xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-24 sm:w-24',
+                    'h-20 w-20 rounded-full border-4 shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:h-24 sm:w-24',
                     isRecording
                       ? 'border-destructive bg-destructive text-destructive-foreground'
                       : 'border-primary bg-primary text-primary-foreground'
@@ -1242,7 +1259,7 @@ export default function PiDisplayPage() {
                     type="button"
                     onClick={() => void startLesson()}
                     disabled={isLessonLoading || isRecording || isTestingSpeaker}
-                    className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}
                   </button>
@@ -1251,7 +1268,7 @@ export default function PiDisplayPage() {
                   type="button"
                   onClick={stopConversation}
                   disabled={isTestingSpeaker || isLessonLoading}
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Stop Conversation
                 </button>
@@ -1265,7 +1282,7 @@ export default function PiDisplayPage() {
                     isTestingSpeaker ||
                     isLessonLoading
                   }
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isTestingSpeaker ? 'Testing Speaker...' : 'Test Speaker'}
                 </button>
@@ -1282,7 +1299,7 @@ export default function PiDisplayPage() {
                     (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
                   }
                   className={cn(
-                    'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
                     'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                   )}
                 >
@@ -1310,7 +1327,7 @@ export default function PiDisplayPage() {
                     setTranscript(IDLE_TEXT)
                   }}
                   disabled={isTestingSpeaker || isLessonLoading}
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   New Session
                 </button>
@@ -1325,7 +1342,7 @@ export default function PiDisplayPage() {
                   }}
                   disabled={isTestingSpeaker || isLessonLoading || lessonState?.status === 'active'}
                   className={cn(
-                    'px-4 py-2 text-xs font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
                     autoListenEnabled
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

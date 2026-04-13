@@ -33,6 +33,76 @@ type TurnLogMetadata = {
   outputSafeguard: DetailedSafeguardResult | null
 }
 
+function hasMeaningfulTranscript(transcript: string) {
+  const normalized = transcript.trim()
+  if (!normalized) {
+    return false
+  }
+
+  const alphanumericCount = (normalized.match(/[a-z0-9]/gi) ?? []).length
+  return alphanumericCount >= 2
+}
+
+function buildNoInputTurn(params: {
+  turnId: string
+  sessionId: string
+  deviceId: string
+  mode: TeachBoxMode
+  activeLessonContext: Awaited<ReturnType<typeof getLessonVoiceTurnContext>>
+  timingsMs: Record<string, number>
+}): SessionTurnResponse {
+  const isLessonPause = params.activeLessonContext?.step.type === 'pause'
+  const transcript = isLessonPause
+    ? "I didn't hear a question. Ask about this part when you are ready."
+    : "I didn't hear anything. Try again."
+  const followupsRemaining =
+    isLessonPause && params.activeLessonContext?.step.type === 'pause'
+      ? Math.max(
+          0,
+          Math.min(2, params.activeLessonContext.step.allowed_followups) -
+            params.activeLessonContext.state.pause_followups_used
+        )
+      : null
+
+  return {
+    turn_id: params.turnId,
+    session_id: params.sessionId,
+    device_id: params.deviceId,
+    mode: params.mode,
+    cosmo_state: 'idle',
+    transcript,
+    input_safeguard: null,
+    assistant: {
+      text: '',
+      blocked: false,
+    },
+    output_safeguard: null,
+    audio: null,
+    lesson: params.activeLessonContext
+      ? {
+          lesson_id: params.activeLessonContext.lesson.meta.lesson_id,
+          step_id: params.activeLessonContext.step.step_id,
+          title: params.activeLessonContext.lesson.meta.title,
+        }
+      : null,
+    lesson_runtime: isLessonPause
+      ? {
+          step_type: 'pause',
+          input_mode: 'voice',
+          prompt_text: transcript,
+          choices: null,
+          followups_remaining: followupsRemaining,
+          attempts_remaining: null,
+          should_auto_continue: false,
+          is_complete: false,
+        }
+      : null,
+    debug: {
+      timings_ms: params.timingsMs,
+    },
+  }
+}
+
 export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnResponse> {
   const turnId = makeId('turn')
   const timingsMs: Record<string, number> = {}
@@ -43,6 +113,17 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     input.mode === 'lesson'
       ? await getLessonVoiceTurnContext(input.deviceId, input.sessionId)
       : null
+
+  if (!hasMeaningfulTranscript(transcript)) {
+    return buildNoInputTurn({
+      turnId,
+      sessionId: input.sessionId,
+      deviceId: input.deviceId,
+      mode: input.mode,
+      activeLessonContext,
+      timingsMs,
+    })
+  }
 
   const inputSafeguardStartedAt = performance.now()
   const inputSafeguard = await classifySafetyDetailed(transcript)
