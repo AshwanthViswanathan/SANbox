@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { DetailedSafeguardResult } from '@/backend/providers/safeguard'
+import { composeAssistantLogText } from '@/backend/utils/assistant-response'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   ParentSessionDetailResponse,
@@ -466,7 +467,10 @@ export async function logTurn(
     transcript: turn.transcript,
     input_safeguard_label: turn.input_safeguard?.label ?? 'SAFE',
     input_safeguard_reason: turn.input_safeguard?.reason ?? 'missing_input_safeguard',
-    assistant_text: turn.assistant.text,
+    assistant_text: composeAssistantLogText({
+      example: turn.assistant.example ?? null,
+      explanation: turn.assistant.text,
+    }),
     assistant_blocked: turn.assistant.blocked,
     output_safeguard_label: turn.output_safeguard?.label ?? null,
     output_safeguard_reason: turn.output_safeguard?.reason ?? null,

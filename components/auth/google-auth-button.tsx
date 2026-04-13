@@ -7,6 +7,8 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 
+const AUTH_NEXT_COOKIE = 'sanbox_auth_next'
+
 type GoogleAuthButtonProps = {
   mode: 'login' | 'signup'
   nextPath?: string
@@ -24,6 +26,7 @@ export function GoogleAuthButton({ mode, nextPath = '/dashboard', className }: G
       setLoading(true)
 
       const supabase = createClient()
+      document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent(nextPath)}; path=/; max-age=600; samesite=lax`
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
       const { error } = await supabase.auth.signInWithOAuth({

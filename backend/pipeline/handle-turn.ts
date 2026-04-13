@@ -14,6 +14,12 @@ import {
 import { transcribeAudio } from '@/backend/providers/stt'
 import { synthesizeSpeech } from '@/backend/providers/tts'
 import { loadRecentSessionTurns, logTurn } from '@/backend/storage/mock-sessions'
+import {
+  composeAssistantLogText,
+  composeAssistantSpeechText,
+  parseAssistantResponse,
+} from '@/backend/utils/assistant-response'
+import { replaceLatexWithPlainText } from '@/lib/math/latex'
 import { getBlockedFallback } from '@/backend/utils/fallback-response'
 import { makeId } from '@/backend/utils/ids'
 import type { SessionTurnResponse, TeachBoxMode } from '@/shared/types'
@@ -75,6 +81,7 @@ function buildNoInputTurn(params: {
     assistant: {
       text: '',
       blocked: false,
+      example: null,
     },
     output_safeguard: null,
     audio: null,
@@ -142,7 +149,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     try {
       audio = await synthesizeSpeech({
         turnId,
-        text: blockedFallback,
+        text: replaceLatexWithPlainText(blockedFallback),
       })
     } catch (error) {
       audio = null
@@ -165,6 +172,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       assistant: {
         text: blockedFallback,
         blocked: true,
+        example: null,
       },
       output_safeguard: null,
       audio,
@@ -216,7 +224,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       try {
         audio = await synthesizeSpeech({
           turnId,
-          text: unavailableText,
+          text: replaceLatexWithPlainText(unavailableText),
         })
       } catch (error) {
         ttsError = error instanceof Error ? error.message : 'Text-to-speech failed.'
@@ -238,6 +246,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
         assistant: {
           text: unavailableText,
           blocked: false,
+          example: null,
         },
         output_safeguard: null,
         audio,
@@ -268,7 +277,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     }
 
     const llmStartedAt = performance.now()
-    const lessonAnswer =
+    const rawLessonAnswer =
       inputSafeguard.label === 'BORDERLINE'
         ? `That is not an okay way to ask. Please use kind and respectful words. ${step.resume_line}`
         : await generateLessonPauseReply({
@@ -280,12 +289,26 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
           })
     timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
+    const parsedLessonAnswer = parseAssistantResponse(rawLessonAnswer)
+    const lessonAnswerText = parsedLessonAnswer.explanation
+    const lessonAnswerForSafety = composeAssistantSpeechText(parsedLessonAnswer)
+
     const outputSafeguardStartedAt = performance.now()
-    const outputSafeguard = await classifySafetyDetailed(lessonAnswer)
+    const outputSafeguard = await classifySafetyDetailed(lessonAnswerForSafety)
     timingsMs.output_safeguard = Math.round(performance.now() - outputSafeguardStartedAt)
 
-    const safeAssistantText =
-      outputSafeguard.label === 'BLOCK' ? getBlockedFallback() : lessonAnswer
+    const safeAssistant =
+      outputSafeguard.label === 'BLOCK'
+        ? {
+            example: null,
+            explanation: getBlockedFallback(),
+          }
+        : {
+            example: parsedLessonAnswer.example,
+            explanation: lessonAnswerText,
+          }
+
+    const safeAssistantSpeech = safeAssistant.explanation.trim()
 
     const followupState = await recordPauseFollowup(input.deviceId, input.sessionId)
 
@@ -296,7 +319,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     try {
       audio = await synthesizeSpeech({
         turnId,
-        text: safeAssistantText,
+        text: replaceLatexWithPlainText(safeAssistantSpeech),
       })
     } catch (error) {
       ttsError = error instanceof Error ? error.message : 'Text-to-speech failed.'
@@ -316,8 +339,9 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
         reason: inputSafeguard.reason,
       },
       assistant: {
-        text: safeAssistantText,
+        text: safeAssistant.explanation,
         blocked: outputSafeguard.label === 'BLOCK',
+        example: safeAssistant.example,
       },
       output_safeguard: {
         label: outputSafeguard.label,
@@ -332,7 +356,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       lesson_runtime: {
         step_type: 'pause',
         input_mode: followupState.shouldAutoContinue ? 'none' : 'voice',
-        prompt_text: safeAssistantText,
+        prompt_text: safeAssistant.explanation,
         choices: null,
         followups_remaining: followupState.followupsRemaining,
         attempts_remaining: null,
@@ -364,7 +388,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   }
 
   const llmStartedAt = performance.now()
-  const assistantText = await generateTeachingReply({
+  const rawAssistantText = await generateTeachingReply({
     transcript,
     mode: input.mode,
     lessonTitle: lesson?.meta.title ?? null,
@@ -377,11 +401,23 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   })
   timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
+  const parsedAssistant = parseAssistantResponse(rawAssistantText)
+  const assistantForSafety = composeAssistantSpeechText(parsedAssistant)
+
   const outputSafeguardStartedAt = performance.now()
-  const outputSafeguard = await classifySafetyDetailed(assistantText)
+  const outputSafeguard = await classifySafetyDetailed(assistantForSafety)
   timingsMs.output_safeguard = Math.round(performance.now() - outputSafeguardStartedAt)
-  const safeAssistantText =
-    outputSafeguard.label === 'BLOCK' ? getBlockedFallback() : assistantText
+  const safeAssistant =
+    outputSafeguard.label === 'BLOCK'
+      ? {
+          example: null,
+          explanation: getBlockedFallback(),
+        }
+      : {
+          example: parsedAssistant.example,
+          explanation: parsedAssistant.explanation,
+        }
+  const safeAssistantSpeech = safeAssistant.explanation.trim()
   const ttsStartedAt = performance.now()
   let audio: SessionTurnResponse['audio'] = null
   let ttsError: string | null = null
@@ -389,7 +425,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   try {
     audio = await synthesizeSpeech({
       turnId,
-      text: safeAssistantText,
+      text: replaceLatexWithPlainText(safeAssistantSpeech),
     })
   } catch (error) {
     audio = null
@@ -410,8 +446,9 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       reason: inputSafeguard.reason,
     },
     assistant: {
-      text: safeAssistantText,
+      text: safeAssistant.explanation,
       blocked: outputSafeguard.label === 'BLOCK',
+      example: safeAssistant.example,
     },
     output_safeguard: {
       label: outputSafeguard.label,

@@ -14,6 +14,7 @@ import {
   type LessonSessionState,
 } from '@/backend/lessons/runtime'
 import { synthesizeSpeech } from '@/backend/providers/tts'
+import { replaceLatexWithPlainText } from '@/lib/math/latex'
 import { MOCK_DEVICES } from '@/lib/mock-data'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
@@ -117,7 +118,7 @@ async function synthesizeLessonPrompt(promptText: string, turnId: string) {
   try {
     return await synthesizeSpeech({
       turnId,
-      text: promptText,
+      text: replaceLatexWithPlainText(promptText),
     })
   } catch {
     return null

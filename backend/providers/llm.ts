@@ -1,10 +1,120 @@
 import { runGroqChatCompletion } from '@/backend/providers/groq'
+import { parseAssistantResponse } from '@/backend/utils/assistant-response'
+import { ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS } from '@/backend/utils/assistant-prompt'
 import type { TeachBoxMode } from '@/shared/types'
 
 const DEFAULT_LLM_MODEL = process.env.TEACHBOX_LLM_MODEL ?? 'openai/gpt-oss-120b'
 type RecentConversationTurn = {
   transcript: string
   assistantText: string
+}
+
+function isLikelyMathQuestion(transcript: string) {
+  const normalized = transcript.trim().toLowerCase()
+
+  return (
+    /[=+\-*/^]/.test(normalized) ||
+    /\b(x|y|slope|equation|function|factor|simplify|solve|quadratic|polynomial|inequality|graph|log|algebra|root|square root|fraction)\b/.test(
+      normalized
+    )
+  )
+}
+
+function shouldStronglyPreferExample(transcript: string) {
+  const normalized = transcript.trim().toLowerCase()
+
+  if (!normalized) {
+    return false
+  }
+
+  return [
+    'example',
+    'worked example',
+    'worked-out example',
+    'walk me through',
+    'explain',
+    'how does',
+    'how do',
+    'why does',
+    'why do',
+    'what is',
+    'what does',
+    'show me',
+    'give me an example',
+    'for example',
+    'solve',
+    'equation',
+    'function',
+    'graph',
+    'factor',
+    'simplify',
+    'quadratic',
+    'slope',
+    'polynomial',
+    'log',
+    'inequality',
+    'triangle',
+  ].some((phrase) => normalized.includes(phrase))
+}
+
+function explicitlyRequestsExample(transcript: string) {
+  const normalized = transcript.trim().toLowerCase()
+
+  return [
+    'example',
+    'worked example',
+    'worked-out example',
+    'give me an example',
+    'show me an example',
+    'walk me through',
+  ].some((phrase) => normalized.includes(phrase))
+}
+
+async function maybeGenerateMissingExample(params: {
+  transcript: string
+  explanation: string
+  lessonTitle?: string | null
+  mode: TeachBoxMode
+}) {
+  if (!shouldStronglyPreferExample(params.transcript)) {
+    return null
+  }
+
+  try {
+    const isMath = isLikelyMathQuestion(params.transcript)
+    const example = await runGroqChatCompletion({
+      model: DEFAULT_LLM_MODEL,
+      temperature: 0.3,
+      maxTokens: isMath ? 800 : 300,
+      purpose: 'teaching example',
+      messages: [
+        {
+          role: 'system',
+          content:
+            isMath
+              ? 'You write one fully worked-out, mathematically valid example problem that helps clarify an explanation. Use the actual math topic from the question. Do not use fantasy stories, gardens, magic, characters, or unrelated analogies. If there is an expression or equation, work directly with expressions or numbers. Show all steps clearly, one step per line without extra blank lines. Use standard LaTeX with $...$ for inline math or $$...$$ for full equations. Do not use \\(...\\). Keep the layout clean and compact on screen. Return only the example text with no labels (like "EXAMPLE:") or surrounding commentary.'
+              : 'You write one short child-friendly example that helps clarify an explanation. Keep it concrete, directly relevant, and short. Do not use random fantasy analogies unless the child asked for one. Return only the example text with no labels, no markdown, and no surrounding commentary.',
+        },
+        {
+          role: 'system',
+          content:
+            params.mode === 'lesson' && params.lessonTitle
+              ? `The child is currently in the lesson "${params.lessonTitle}". Keep the example aligned with that lesson.`
+              : 'The child is in open question mode.',
+        },
+        {
+          role: 'user',
+          content: isMath
+            ? `Question: ${params.transcript}\nExplanation: ${params.explanation}\nWrite one fully worked-out example problem using the actual math in the question. Show all steps. Put each step on its own line without extra blank lines between them. Wrap math in $...$ or $$...$$.`
+            : `Question: ${params.transcript}\nExplanation: ${params.explanation}\nWrite one short example that would help a K-5 student understand this.`,
+        },
+      ],
+    })
+
+    return example.trim() || null
+  } catch {
+    return null
+  }
 }
 
 function getTeachingFallback(
@@ -39,6 +149,7 @@ export async function generateTeachingReply(params: {
   }
 }) {
   const { transcript, mode, lessonTitle, recentTurns = [], inputSafety } = params
+  const forceExample = explicitlyRequestsExample(transcript)
 
   const lessonContext =
     mode === 'lesson' && lessonTitle
@@ -67,17 +178,26 @@ export async function generateTeachingReply(params: {
   ])
 
   try {
-    return await runGroqChatCompletion({
+    const rawReply = await runGroqChatCompletion({
       model: DEFAULT_LLM_MODEL,
       temperature: 0.4,
-      maxTokens: 220,
+      maxTokens: 420,
       purpose: 'main LLM response',
       messages: [
         {
           role: 'system',
           content:
-            'You are SANbox, a voice-first AI learning companion for K-5 students. Respond with short, warm, concrete explanations. Use plain language, avoid markdown, avoid lists unless needed, and keep answers easy to read aloud. If the child uses rude, sexual, threatening, or age-inappropriate language, respond like a calm teacher: explain briefly why it is not okay, encourage safer and more respectful wording, and redirect to a safe topic.',
+            `You are SANbox, a voice-first AI learning companion for K-5 students. Respond with short, warm, concrete explanations. Use plain language, avoid markdown, avoid lists unless needed, and keep answers easy to read aloud. For math, you may use lightweight LaTeX in $...$ or $$...$$ when it helps. Supported math includes fractions, exponents, subscripts, square roots and n-th roots, multiplication and division symbols, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable: no matrices, no long derivations, no obscure commands. If the child uses rude, sexual, threatening, or age-inappropriate language, respond like a calm teacher: explain briefly why it is not okay, encourage safer and more respectful wording, and redirect to a safe topic. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
         },
+        ...(forceExample
+          ? [
+              {
+                role: 'system' as const,
+                content:
+                  'The child explicitly asked for an example. You must include a non-empty [example]...[/example] section.',
+              },
+            ]
+          : []),
         {
           role: 'system',
           content: lessonContext,
@@ -97,6 +217,23 @@ export async function generateTeachingReply(params: {
         },
       ],
     })
+
+    const parsedReply = parseAssistantResponse(rawReply)
+
+    if (forceExample || !parsedReply.example) {
+      const generatedExample = await maybeGenerateMissingExample({
+        transcript,
+        explanation: parsedReply.explanation,
+        lessonTitle,
+        mode,
+      })
+
+      if (generatedExample) {
+        return `[explanation]${parsedReply.explanation}[/explanation]\n[example]${generatedExample}[/example]`
+      }
+    }
+
+    return rawReply
   } catch {
     return getTeachingFallback(
       transcript,
@@ -121,13 +258,13 @@ export async function generateLessonPauseReply(params: {
     return await runGroqChatCompletion({
       model: DEFAULT_LLM_MODEL,
       temperature: 0.3,
-      maxTokens: 180,
+      maxTokens: 260,
       purpose: 'lesson pause reply',
       messages: [
         {
           role: 'system',
           content:
-            'You are SANbox, a voice-first AI learning companion for K-5 students. You are inside a scripted lesson. Answer the child’s follow-up question briefly, clearly, and only about the current lesson concept. Do not open a new topic. Do not ask multiple follow-up questions. Do not change the lesson plan. Keep the reply short enough to read aloud comfortably.',
+            `You are SANbox, a voice-first AI learning companion for K-5 students. You are inside a scripted lesson. Answer the child’s follow-up question briefly, clearly, and only about the current lesson concept. Do not open a new topic. Do not ask multiple follow-up questions. Do not change the lesson plan. Keep the reply short enough to read aloud comfortably. For math, you may use lightweight LaTeX in $...$ when it helps, including fractions, exponents, subscripts, roots, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
         },
         {
           role: 'system',

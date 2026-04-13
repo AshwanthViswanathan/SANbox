@@ -62,6 +62,7 @@ export const sessionTurnResponseSchema = z.object({
   assistant: z.object({
     text: z.string(),
     blocked: z.boolean(),
+    example: z.string().nullable().optional(),
   }),
   output_safeguard: safeguardResultSchema.nullable(),
   audio: audioDescriptorSchema.nullable(),

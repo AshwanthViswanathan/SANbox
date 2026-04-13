@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CosmoFace } from '@/components/pi/cosmo-face'
 import { GoogleAuthButton } from '@/components/auth/google-auth-button'
+import { LatexText } from '@/components/pi/latex-text'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type {
   CosmoState,
@@ -21,10 +22,14 @@ import {
 
 const IDLE_TEXT = 'Click the button and ask San a question!'
 const THINKING_TEXT = 'Thinking about that...'
-const MAX_INITIAL_SILENCE_MS = 5000
-const MAX_POST_SPEECH_SILENCE_MS = 1200
+const NO_INPUT_TEXT = "I didn't hear anything. Try again."
+const MAX_INITIAL_SILENCE_MS = 2200
+const MAX_POST_SPEECH_SILENCE_MS = 1500
 const MAX_RECORDING_MS = 12000
-const SPEECH_RMS_THRESHOLD = 0.015
+const MIN_SPEECH_RMS_THRESHOLD = 0.009
+const NOISE_FLOOR_CALIBRATION_MS = 250
+const SPEECH_ACTIVATION_MS = 120
+const NOISE_FLOOR_MULTIPLIER = 1.8
 
 type RecorderState = {
   stream: MediaStream
@@ -37,6 +42,20 @@ type RecorderState = {
   startedAt: number
   speechDetected: boolean
   lastVoiceAt: number | null
+  noiseFloorRms: number
+  voicedMs: number
+  lastChunkDurationMs: number
+}
+
+class PlaybackInterruptedError extends Error {
+  constructor() {
+    super('Playback interrupted.')
+    this.name = 'PlaybackInterruptedError'
+  }
+}
+
+function isPlaybackInterruptedError(error: unknown) {
+  return error instanceof PlaybackInterruptedError
 }
 
 function makeBrowserId(prefix: string) {
@@ -109,12 +128,14 @@ function dataUrlToBlob(dataUrl: string) {
 
 async function playAudioElement(
   audioUrl: string,
-  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>
+  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>,
+  activePlaybackStopRef: React.MutableRefObject<(() => void) | null>
 ) {
   const blob = dataUrlToBlob(audioUrl)
   const objectUrl = URL.createObjectURL(blob)
   const audio = new Audio(dataUrlToPlayableSrc(objectUrl))
   audio.preload = 'auto'
+  // @ts-expect-error - playsInline is sometimes supported
   audio.playsInline = true
   activeAudioRef.current = audio
 
@@ -122,15 +143,38 @@ async function playAudioElement(
     audio.load()
     await audio.play()
     await new Promise<void>((resolve, reject) => {
-      audio.onended = () => resolve()
-      audio.onerror = () => reject(new Error('Generated audio failed to play.'))
+      let settled = false
+      const finalize = (callback: () => void) => {
+        if (settled) return
+        settled = true
+        activePlaybackStopRef.current = null
+        callback()
+      }
+
+      activePlaybackStopRef.current = () => {
+        audio.pause()
+        audio.currentTime = 0
+        finalize(() => reject(new PlaybackInterruptedError()))
+      }
+
+      audio.onended = () => finalize(resolve)
+      audio.onerror = () => finalize(() => reject(new Error('Generated audio failed to play.')))
     })
   } finally {
+    if (activeAudioRef.current === audio) {
+      activeAudioRef.current = null
+    }
+    if (activePlaybackStopRef.current) {
+      activePlaybackStopRef.current = null
+    }
     URL.revokeObjectURL(objectUrl)
   }
 }
 
-async function playAudioWithWebAudio(audioUrl: string) {
+async function playAudioWithWebAudio(
+  audioUrl: string,
+  activePlaybackStopRef: React.MutableRefObject<(() => void) | null>
+) {
   if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined') {
     throw new Error('Web Audio playback is unavailable.')
   }
@@ -147,15 +191,35 @@ async function playAudioWithWebAudio(audioUrl: string) {
     source.connect(audioContext.destination)
 
     await new Promise<void>((resolve, reject) => {
-      source.onended = () => resolve()
+      let settled = false
+      const finalize = (callback: () => void) => {
+        if (settled) return
+        settled = true
+        activePlaybackStopRef.current = null
+        callback()
+      }
+
+      activePlaybackStopRef.current = () => {
+        try {
+          source.stop()
+        } catch {
+          // Ignore if the source already stopped.
+        }
+        finalize(() => reject(new PlaybackInterruptedError()))
+      }
+
+      source.onended = () => finalize(resolve)
       source.start(0)
 
       window.setTimeout(() => {
         if (audioContext.state === 'closed') return
-        reject(new Error('Web Audio playback timed out.'))
+        finalize(() => reject(new Error('Web Audio playback timed out.')))
       }, Math.max(5000, decoded.duration * 1500))
     })
   } finally {
+    if (activePlaybackStopRef.current) {
+      activePlaybackStopRef.current = null
+    }
     await audioContext.close().catch(() => undefined)
   }
 }
@@ -184,7 +248,10 @@ async function waitForSpeechVoices() {
   })
 }
 
-async function playBrowserSpeech(text: string) {
+async function playBrowserSpeech(
+  text: string,
+  activePlaybackStopRef: React.MutableRefObject<(() => void) | null>
+) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
     throw new Error('Browser speech synthesis is unavailable.')
   }
@@ -192,6 +259,14 @@ async function playBrowserSpeech(text: string) {
   const voices = await waitForSpeechVoices()
 
   await new Promise<void>((resolve, reject) => {
+    let settled = false
+    const finalize = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      activePlaybackStopRef.current = null
+      callback()
+    }
+
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.95
     utterance.pitch = 1.05
@@ -206,8 +281,13 @@ async function playBrowserSpeech(text: string) {
       utterance.voice = preferredVoice
     }
 
-    utterance.onend = () => resolve()
-    utterance.onerror = () => reject(new Error('Browser speech synthesis failed.'))
+    activePlaybackStopRef.current = () => {
+      window.speechSynthesis.cancel()
+      finalize(() => reject(new PlaybackInterruptedError()))
+    }
+
+    utterance.onend = () => finalize(resolve)
+    utterance.onerror = () => finalize(() => reject(new Error('Browser speech synthesis failed.')))
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
   })
@@ -216,32 +296,42 @@ async function playBrowserSpeech(text: string) {
 async function playAssistantAudio(
   audioUrl: string | null,
   text: string,
-  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>
+  activeAudioRef: React.MutableRefObject<HTMLAudioElement | null>,
+  activePlaybackStopRef: React.MutableRefObject<(() => void) | null>
 ) {
   const errors: string[] = []
 
   if (audioUrl) {
     try {
-      await playAudioElement(audioUrl, activeAudioRef)
+      await playAudioElement(audioUrl, activeAudioRef, activePlaybackStopRef)
       return
     } catch (error) {
+      if (isPlaybackInterruptedError(error)) {
+        throw error
+      }
       errors.push(error instanceof Error ? error.message : 'HTML audio playback failed.')
       activeAudioRef.current?.pause()
       activeAudioRef.current = null
     }
 
     try {
-      await playAudioWithWebAudio(audioUrl)
+      await playAudioWithWebAudio(audioUrl, activePlaybackStopRef)
       return
     } catch (error) {
+      if (isPlaybackInterruptedError(error)) {
+        throw error
+      }
       errors.push(error instanceof Error ? error.message : 'Web Audio playback failed.')
     }
   }
 
   try {
-    await playBrowserSpeech(text)
+    await playBrowserSpeech(text, activePlaybackStopRef)
     return
   } catch (error) {
+    if (isPlaybackInterruptedError(error)) {
+      throw error
+    }
     errors.push(error instanceof Error ? error.message : 'Browser speech synthesis failed.')
   }
 
@@ -345,6 +435,9 @@ export default function PiDisplayPage() {
   const [state, setState] = useState<CosmoState>('idle')
   const [transcript, setTranscript] = useState(IDLE_TEXT)
   const [assistantText, setAssistantText] = useState('')
+  const [assistantExample, setAssistantExample] = useState<string | null>(null)
+  const [isExampleExpanded, setIsExampleExpanded] = useState(false)
+  const [exampleNeedsExpansion, setExampleNeedsExpansion] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const [autoListenEnabled, setAutoListenEnabled] = useState(true)
@@ -356,11 +449,35 @@ export default function PiDisplayPage() {
   const [copiedState, setCopiedState] = useState<'device_id' | 'device_link' | null>(null)
   const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
+  const exampleContainerRef = useRef<HTMLDivElement | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
+  const shouldRestartListeningAfterInterruptRef = useRef(false)
   const autoRestartTimeoutRef = useRef<number | null>(null)
   const activeAudioRef = useRef<HTMLAudioElement | null>(null)
+  const activePlaybackStopRef = useRef<(() => void) | null>(null)
+
+  const interruptPlaybackAndStartRecording = () => {
+    cancelAutoRestart()
+    shouldRestartListeningAfterInterruptRef.current = true
+    stopActivePlayback()
+    setAssistantText('')
+    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
+    setDebugTimings(null)
+    setTranscript('Listening...')
+    setState('listening')
+
+    window.setTimeout(() => {
+      if (!shouldRestartListeningAfterInterruptRef.current) {
+        return
+      }
+
+      void startRecording()
+    }, 0)
+  }
 
   async function refreshLinkedAccount() {
     try {
@@ -393,6 +510,29 @@ export default function PiDisplayPage() {
       // Keep the demo usable even if the claim write fails transiently.
     }
   }
+
+  const getSpokenAssistantText = (text: string) => text.trim()
+
+  useEffect(() => {
+    if (!assistantExample || isExampleExpanded || !exampleContainerRef.current) {
+      return
+    }
+
+    const checkOverflow = () => {
+      const el = exampleContainerRef.current
+      if (el) {
+        setExampleNeedsExpansion(el.scrollHeight > el.clientHeight)
+      }
+    }
+
+    checkOverflow()
+    const observer = new ResizeObserver(checkOverflow)
+    if (exampleContainerRef.current) {
+      observer.observe(exampleContainerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [assistantExample, isExampleExpanded])
 
   useEffect(() => {
     const supported =
@@ -582,14 +722,27 @@ export default function PiDisplayPage() {
     recorderStateRef.current = null
   }
 
+  const stopActivePlayback = () => {
+    activePlaybackStopRef.current?.()
+    activePlaybackStopRef.current = null
+    activeAudioRef.current?.pause()
+    activeAudioRef.current = null
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+  }
+
   const stopConversation = () => {
     cancelAutoRestart()
     isStoppingRef.current = true
-    activeAudioRef.current?.pause()
-    activeAudioRef.current = null
+    shouldRestartListeningAfterInterruptRef.current = false
+    stopActivePlayback()
     cleanupRecorder()
     setIsRecording(false)
     setAssistantText('')
+    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
     setDebugTimings(null)
     setState('idle')
     setTranscript(IDLE_TEXT)
@@ -599,6 +752,7 @@ export default function PiDisplayPage() {
   const lessonAllowsVoiceInput = lessonInteraction?.runtime.input_mode === 'voice'
 
   const handleLessonInteraction = async (result: LessonInteractionResponse) => {
+    stopActivePlayback()
     setLessonInteraction(result)
     setLessonState((current) => ({
       device_id: result.device_id,
@@ -613,6 +767,9 @@ export default function PiDisplayPage() {
     }))
 
     setAssistantText('')
+    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
     setTranscript(result.runtime.prompt_text)
     setState(
       result.runtime.input_mode === 'none'
@@ -624,7 +781,16 @@ export default function PiDisplayPage() {
 
     try {
       if (result.audio?.url || result.runtime.prompt_text.trim()) {
-        await playAssistantAudio(result.audio?.url ?? null, result.runtime.prompt_text, activeAudioRef)
+        await playAssistantAudio(
+          result.audio?.url ?? null,
+          result.runtime.prompt_text,
+          activeAudioRef,
+          activePlaybackStopRef
+        )
+      }
+    } catch (error) {
+      if (!isPlaybackInterruptedError(error)) {
+        throw error
       }
     } finally {
       activeAudioRef.current = null
@@ -634,6 +800,9 @@ export default function PiDisplayPage() {
       setState('idle')
       setTranscript('Lesson complete.')
       setAssistantText(result.runtime.prompt_text)
+      setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
       await fetchLessonState(result.device_id)
       return
     }
@@ -645,6 +814,9 @@ export default function PiDisplayPage() {
 
     setState('idle')
     setTranscript(result.runtime.prompt_text)
+    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
     setAssistantText(
       result.runtime.input_mode === 'choice'
         ? 'Answer with A, B, C, or D.'
@@ -662,6 +834,7 @@ export default function PiDisplayPage() {
     const sessionId = sessionIdRef.current
     setIsLessonLoading(true)
     cancelAutoRestart()
+    stopActivePlayback()
 
     try {
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -718,6 +891,7 @@ export default function PiDisplayPage() {
     if (!deviceIdRef.current || !sessionId || isLessonLoading) return
 
     setIsLessonLoading(true)
+    stopActivePlayback()
 
     try {
       const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/continue`, {
@@ -754,6 +928,7 @@ export default function PiDisplayPage() {
     if (!deviceIdRef.current || !sessionIdRef.current || isLessonLoading) return
 
     setIsLessonLoading(true)
+    stopActivePlayback()
 
     try {
       const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/checkpoint`, {
@@ -796,16 +971,30 @@ export default function PiDisplayPage() {
 
     setIsTestingSpeaker(true)
     cancelAutoRestart()
+    stopActivePlayback()
     setAssistantText('This is a speaker test.')
+    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
     setState('speaking')
     setTranscript('Playing speaker test...')
 
     try {
       const testAudioUrl = await createTestToneDataUrl()
-      await playAssistantAudio(testAudioUrl, 'This is a speaker test.', activeAudioRef)
+      await playAssistantAudio(
+        testAudioUrl,
+        'This is a speaker test.',
+        activeAudioRef,
+        activePlaybackStopRef
+      )
       setState('idle')
       setTranscript(IDLE_TEXT)
     } catch (error) {
+      if (isPlaybackInterruptedError(error)) {
+        setState('idle')
+        setTranscript(IDLE_TEXT)
+        return
+      }
       setState('error')
       setTranscript(
         error instanceof Error ? error.message : 'Speaker test failed on this browser.'
@@ -855,9 +1044,12 @@ export default function PiDisplayPage() {
         setTranscript(
           reason === 'manual' && elapsedMs < 400
             ? 'Hold the button a little longer before releasing.'
-            : "I didn't hear anything. Try again."
+            : NO_INPUT_TEXT
         )
         setAssistantText('')
+        setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
         if (lessonState?.status === 'active' && lessonAllowsVoiceInput) {
           scheduleAutoRestart()
         } else if (autoListenEnabled) {
@@ -871,6 +1063,9 @@ export default function PiDisplayPage() {
           setState('idle')
           setTranscript('Hold the button a little longer before releasing.')
           setAssistantText('')
+          setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
           if (autoListenEnabled) {
             scheduleAutoRestart()
           }
@@ -916,6 +1111,9 @@ export default function PiDisplayPage() {
       setDebugTimings(result.debug?.timings_ms ?? null)
       setTranscript(result.transcript)
       setAssistantText(result.assistant.text)
+      setAssistantExample(result.assistant.example ?? null)
+      setIsExampleExpanded(false)
+      setExampleNeedsExpansion(false)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
       const serverTtsError = result.debug?.tts_error ?? null
       if (result.lesson_runtime) {
@@ -924,7 +1122,7 @@ export default function PiDisplayPage() {
             ? {
                 ...current,
                 lesson: result.lesson ?? current.lesson,
-                runtime: result.lesson_runtime,
+                runtime: result.lesson_runtime!,
               }
             : current
         )
@@ -937,6 +1135,9 @@ export default function PiDisplayPage() {
         setState('idle')
         setTranscript(result.transcript)
         setAssistantText('')
+        setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
 
         if (result.lesson_runtime?.input_mode === 'voice') {
           scheduleAutoRestart()
@@ -953,8 +1154,9 @@ export default function PiDisplayPage() {
       try {
         await playAssistantAudio(
           result.audio?.url ?? null,
-          result.assistant.text,
-          activeAudioRef
+          getSpokenAssistantText(result.assistant.text),
+          activeAudioRef,
+          activePlaybackStopRef
         )
         setState('idle')
         if (result.lesson_runtime?.should_auto_continue && sessionIdRef.current) {
@@ -969,6 +1171,9 @@ export default function PiDisplayPage() {
               : 'Ask a question about this part.'
           )
           setAssistantText('')
+          setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
           return
         }
 
@@ -981,6 +1186,18 @@ export default function PiDisplayPage() {
         }
         return
       } catch (playbackError) {
+        if (isPlaybackInterruptedError(playbackError)) {
+          if (shouldRestartListeningAfterInterruptRef.current) {
+            return
+          }
+          setState('idle')
+          setTranscript(IDLE_TEXT)
+          setAssistantText('')
+          setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
+          return
+        }
         setState('error')
         setTranscript(
           serverTtsError
@@ -1013,9 +1230,13 @@ export default function PiDisplayPage() {
     }
 
     try {
+      shouldRestartListeningAfterInterruptRef.current = false
       cancelAutoRestart()
       setDebugTimings(null)
       setAssistantText('')
+      setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
       setTranscript('Listening...')
       setState('listening')
       setIsRecording(true)
@@ -1023,8 +1244,9 @@ export default function PiDisplayPage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
         },
       })
       const audioContext = new window.AudioContext()
@@ -1049,13 +1271,36 @@ export default function PiDisplayPage() {
         if (!currentRecorderState) return
 
         const now = Date.now()
-        if (rms >= SPEECH_RMS_THRESHOLD) {
-          currentRecorderState.speechDetected = true
-          currentRecorderState.lastVoiceAt = now
-          return
+        const elapsedMs = now - currentRecorderState.startedAt
+        const chunkDurationMs = Math.round((input.length / currentRecorderState.sampleRate) * 1000)
+        currentRecorderState.lastChunkDurationMs = chunkDurationMs
+
+        if (elapsedMs <= NOISE_FLOOR_CALIBRATION_MS) {
+          currentRecorderState.noiseFloorRms =
+            currentRecorderState.noiseFloorRms === 0
+              ? rms
+              : currentRecorderState.noiseFloorRms * 0.85 + rms * 0.15
         }
 
-        const elapsedMs = now - currentRecorderState.startedAt
+        const speechThreshold = Math.max(
+          MIN_SPEECH_RMS_THRESHOLD,
+          currentRecorderState.noiseFloorRms * NOISE_FLOOR_MULTIPLIER
+        )
+
+        if (rms >= speechThreshold) {
+          currentRecorderState.voicedMs += chunkDurationMs
+        } else {
+          currentRecorderState.voicedMs = Math.max(
+            0,
+            currentRecorderState.voicedMs - chunkDurationMs * 2
+          )
+        }
+
+        if (currentRecorderState.voicedMs >= SPEECH_ACTIVATION_MS) {
+          currentRecorderState.speechDetected = true
+          currentRecorderState.lastVoiceAt = now
+        }
+
         const silenceMs = currentRecorderState.lastVoiceAt
           ? now - currentRecorderState.lastVoiceAt
           : now - currentRecorderState.startedAt
@@ -1083,6 +1328,9 @@ export default function PiDisplayPage() {
         startedAt: Date.now(),
         speechDetected: false,
         lastVoiceAt: null,
+        noiseFloorRms: 0,
+        voicedMs: 0,
+        lastChunkDurationMs: 0,
       }
     } catch (error) {
       setIsRecording(false)
@@ -1096,6 +1344,11 @@ export default function PiDisplayPage() {
   const toggleRecording = async () => {
     if (isRecording) {
       await stopRecorderAndSend('manual')
+      return
+    }
+
+    if (state === 'speaking' || state === 'blocked') {
+      interruptPlaybackAndStartRecording()
       return
     }
 
@@ -1131,9 +1384,65 @@ export default function PiDisplayPage() {
             </div>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_1fr_auto] gap-3 pt-3 sm:gap-4 sm:pt-4 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[auto_1fr_auto] lg:items-center lg:gap-x-6 lg:gap-y-3">
-              <div className="flex justify-center lg:row-span-2">
-                <CosmoFace state={state} />
+            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_1fr_auto] gap-3 pt-3 sm:gap-4 sm:pt-4 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[auto_1fr_auto] lg:gap-x-6 lg:gap-y-3">
+              <div className="flex justify-center items-start lg:row-span-2 lg:pt-2">
+                <div className="flex w-full max-w-[34rem] flex-col items-center gap-3">
+                  {!isExampleExpanded && (
+                    <CosmoFace
+                      state={state}
+                      className="h-32 w-32 sm:h-40 sm:w-40 lg:h-[min(28vh,14rem)] lg:w-[min(28vh,14rem)] shrink-0"
+                    />
+                  )}
+                  {assistantExample ? (
+                    <div className={cn(
+                      "w-full rounded-2xl border border-white/15 bg-white/8 px-5 py-3 text-left shadow-lg flex flex-col min-h-0",
+                      isExampleExpanded ? "flex-1" : ""
+                    )}>
+                      <div className="flex items-center justify-between shrink-0 mb-1 z-10 relative bg-black/5 rounded-t-xl pb-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
+                          Example
+                        </p>
+                        {isExampleExpanded && (
+                          <button 
+                            type="button" 
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setIsExampleExpanded(false)
+                            }}
+                            className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
+                          >
+                            Minimize
+                          </button>
+                        )}
+                      </div>
+                      <div 
+                        ref={exampleContainerRef}
+                        className={cn(
+                          "text-sm leading-snug text-foreground sm:text-base [&_.katex-display]:m-0 [&_.katex-display]:py-0 relative z-0",
+                          isExampleExpanded ? "overflow-y-auto pr-2 mt-1" : "overflow-hidden max-h-[30vh] mt-1"
+                        )}
+                      >
+                        <LatexText text={assistantExample} />
+                      </div>
+                      {exampleNeedsExpansion && !isExampleExpanded && (
+                        <div className="mt-2 shrink-0 border-t border-white/10 pt-2 text-center relative z-20 bg-black/20 rounded-b-xl">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setIsExampleExpanded(true)
+                            }}
+                            className="text-[11px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider w-full py-1 cursor-pointer relative z-30 pointer-events-auto"
+                          >
+                            Show More
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               <div className="min-h-0 space-y-2 text-center lg:text-left">
@@ -1147,9 +1456,13 @@ export default function PiDisplayPage() {
                   {transcript}
                 </p>
                 {assistantText ? (
-                  <p className="text-sm leading-relaxed text-muted-foreground sm:text-base lg:text-lg [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:6] overflow-hidden">
-                    {assistantText}
-                  </p>
+                  <div className="mx-auto w-full max-w-2xl rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-left lg:mx-0">
+                    <div
+                      className="text-sm leading-snug text-muted-foreground sm:text-base lg:text-lg [&_.katex-display]:m-0 [&_.katex-display]:py-0"
+                    >
+                      <LatexText text={assistantText} />
+                    </div>
+                  </div>
                 ) : null}
                 {lessonInteraction ? (
                   <p className="text-[11px] font-mono text-muted-foreground sm:text-xs">
@@ -1168,53 +1481,6 @@ export default function PiDisplayPage() {
                   </p>
                 ) : null}
               </div>
-
-              {deviceIdRef.current ? (
-                <div className="rounded-2xl border border-white/15 bg-white/8 px-3 py-3 text-left lg:col-start-2">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
-                        SANbox Device
-                      </p>
-                      <p className="mt-1 break-all font-mono text-[11px] text-foreground sm:text-xs">
-                        {deviceIdRef.current}
-                      </p>
-                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground sm:text-xs">
-                        {linkedAccountEmail
-                          ? `Linked account: ${linkedAccountEmail}`
-                          : 'Not linked to a SANbox account yet.'}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void copyDeviceReference('device_id')}
-                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void copyDeviceReference('device_link')}
-                        className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
-                      >
-                        <Link2 className="h-3.5 w-3.5" />
-                        {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
-                      </button>
-                    </div>
-                  </div>
-                  {!linkedAccountEmail ? (
-                    <div className="mt-3">
-                      <GoogleAuthButton
-                        mode="login"
-                        nextPath={piLoginPath}
-                        className="w-full gap-2"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
 
               <div className="flex flex-col items-center gap-3 lg:col-span-2 lg:pt-1">
                 <button
@@ -1310,11 +1576,13 @@ export default function PiDisplayPage() {
                   onClick={async () => {
                     cancelAutoRestart()
                     cleanupRecorder()
-                    activeAudioRef.current?.pause()
-                    activeAudioRef.current = null
+                    stopActivePlayback()
                     sessionIdRef.current = makeBrowserId('session')
                     window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
                     setAssistantText('')
+                    setAssistantExample(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
                     setDebugTimings(null)
                     setLessonInteraction(null)
                     setIsRecording(false)
@@ -1372,8 +1640,49 @@ export default function PiDisplayPage() {
           </div>
         </div>
 
-        <div className="flex justify-center px-2 text-center text-[11px] text-muted-foreground sm:text-xs">
-          Browser demo mic capture requires `https` or `localhost`. Each browser keeps its own SANbox device ID.
+        <div className="space-y-2 px-2">
+          {deviceIdRef.current ? (
+            <div className="rounded-2xl border border-white/20 bg-white/10 px-3 py-3 text-left shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
+                    SANbox Device
+                  </p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-foreground sm:text-xs">
+                    {deviceIdRef.current}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground sm:text-xs">
+                    {linkedAccountEmail
+                      ? `Linked account: ${linkedAccountEmail}`
+                      : 'Not linked to a SANbox account yet.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void copyDeviceReference('device_id')}
+                    className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyDeviceReference('device_link')}
+                    className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+              {!linkedAccountEmail ? (
+                <div className="mt-3">
+                  <GoogleAuthButton mode="login" nextPath={piLoginPath} className="w-full gap-2" />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,0 +1,2 @@
+export const ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS =
+  'Write the answer using these exact tags. Always put the main teaching reply first as [explanation]...[/explanation]. If an example would help, put it after that as [example]...[/example]. Do not repeat the explanation verbatim inside the example. The explanation must make sense on its own. Do not use markdown bullets. Keep both parts short and easy to read aloud.'

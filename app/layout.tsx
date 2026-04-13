@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import Image from 'next/image'
-import { FloatingChat } from '@/components/app/floating-chat'
 import './globals.css'
+import 'katex/dist/katex.min.css'
 
 export const metadata: Metadata = {
   title: 'SANbox - AI Learning Companion',
@@ -48,7 +48,6 @@ export default function RootLayout({
           <div className="stitch-shell absolute inset-0 opacity-80 mix-blend-multiply" />
         </div>
         {children}
-        <FloatingChat />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
