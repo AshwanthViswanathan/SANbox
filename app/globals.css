@@ -165,7 +165,9 @@
     background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    box-shadow: 0 24px 48px -20px rgba(0, 95, 153, 0.22);
+    box-shadow:
+      0 26px 56px -24px rgba(0, 95, 153, 0.22),
+      0 10px 24px -18px rgba(17, 24, 39, 0.18);
     @apply rounded-[2rem] border border-white/70;
   }
   .stitch-readable-surface {
@@ -180,10 +182,13 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 24px 56px -40px rgba(0, 95, 153, 0.28);
-    @apply min-h-full rounded-[2rem] border border-white/35;
+    @apply rounded-[2rem] border border-white/35;
   }
   .stitch-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 241, 217, 0.78));
+    box-shadow:
+      0 22px 44px -28px rgba(0, 95, 153, 0.2),
+      0 8px 18px -14px rgba(17, 24, 39, 0.14);
     @apply rounded-[1.75rem] border border-[color:rgba(178,173,154,0.18)];
   }
   .stitch-pill {

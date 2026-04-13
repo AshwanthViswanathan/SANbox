@@ -1,8 +1,9 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowUpRight, Clock3, ShieldAlert } from 'lucide-react'
+import sereneBeachImage from '@/docs/serene-beach-landscape-calm-waters-gentle-waves-free-vector.jpg'
 
 import { EmptyState } from '@/components/app/empty-state'
-import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge } from '@/components/app/teachbox-badges'
 import { Button } from '@/components/ui/button'
 import { getParentSessions } from '@/lib/parent-dashboard-data'
@@ -40,17 +41,25 @@ export default async function SessionsPage({
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Sessions"
-        description="Every SANbox conversation, with mode, timing, device, and safeguard visibility."
-        badge={activeFilter === 'all' ? undefined : FILTER_BADGES[activeFilter]}
-      />
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 pt-6 pb-2 md:px-6 md:pt-7 md:pb-3">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <Image
+            src={sereneBeachImage}
+            alt=""
+            fill
+            priority
+            className="object-cover object-[center_62%]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.94),rgba(252,247,225,0.88),rgba(252,247,225,0.68))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_34%)]" />
+        </div>
 
-      <section className="stitch-panel p-6">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="stitch-label text-tertiary">Monitoring hub</p>
-            <h2 className="stitch-heading mt-2 text-4xl">Explore the shoreline</h2>
+            <h2 className="stitch-heading text-4xl">Sessions</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Every SANbox conversation, with mode, timing, device, and safeguard visibility.
+            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="stitch-card border-l-4 border-l-primary px-5 py-5">
