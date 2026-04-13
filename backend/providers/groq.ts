@@ -1,6 +1,44 @@
-type GroqChatMessage = {
+type GroqAssistantMessage = {
   role: 'system' | 'user' | 'assistant'
+  content: string | null
+}
+
+type GroqToolMessage = {
+  role: 'tool'
   content: string
+  tool_call_id: string
+  name?: string
+}
+
+export type GroqChatMessage = GroqAssistantMessage | GroqToolMessage
+
+export type GroqToolDefinition = {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }
+}
+
+export type GroqToolChoice =
+  | 'auto'
+  | 'none'
+  | 'required'
+  | {
+      type: 'function'
+      function: {
+        name: string
+      }
+    }
+
+export type GroqToolCall = {
+  id: string
+  type: 'function'
+  function: {
+    name: string
+    arguments: string
+  }
 }
 
 type GroqChatOptions = {
@@ -11,8 +49,14 @@ type GroqChatOptions = {
   purpose?: string
 }
 
+type GroqChatWithToolsOptions = GroqChatOptions & {
+  tools: GroqToolDefinition[]
+  toolChoice?: GroqToolChoice
+}
+
 type GroqChatResponse = {
   choices?: Array<{
+    finish_reason?: string | null
     message?: {
       content?:
         | string
@@ -21,6 +65,7 @@ type GroqChatResponse = {
             text?: string
           }>
         | null
+      tool_calls?: GroqToolCall[] | null
     }
   }>
   error?: {
@@ -73,19 +118,28 @@ function extractChatContent(payload: GroqChatResponse) {
   return ''
 }
 
-export async function runGroqChatCompletion(options: GroqChatOptions) {
+async function createGroqChatCompletion(
+  options: GroqChatOptions | GroqChatWithToolsOptions
+) {
+  const body: Record<string, unknown> = {
+    model: options.model,
+    messages: options.messages,
+    temperature: options.temperature ?? 0.2,
+    max_tokens: options.maxTokens ?? 300,
+  }
+
+  if ('tools' in options) {
+    body.tools = options.tools
+    body.tool_choice = options.toolChoice ?? 'auto'
+  }
+
   const response = await fetch(`${GROQ_API_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${getGroqApiKey()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: options.model,
-      messages: options.messages,
-      temperature: options.temperature ?? 0.2,
-      max_tokens: options.maxTokens ?? 300,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -93,7 +147,11 @@ export async function runGroqChatCompletion(options: GroqChatOptions) {
     throw new Error(`Groq chat completion failed: ${response.status} ${errorMessage}`)
   }
 
-  const payload = (await response.json()) as GroqChatResponse
+  return (await response.json()) as GroqChatResponse
+}
+
+export async function runGroqChatCompletion(options: GroqChatOptions) {
+  const payload = await createGroqChatCompletion(options)
   const content = extractChatContent(payload)
 
   if (!content) {
@@ -102,6 +160,19 @@ export async function runGroqChatCompletion(options: GroqChatOptions) {
   }
 
   return content
+}
+
+export async function runGroqChatCompletionWithTools(options: GroqChatWithToolsOptions) {
+  const payload = await createGroqChatCompletion(options)
+  const choice = payload.choices?.[0]
+  const content = extractChatContent(payload)
+  const toolCalls = choice?.message?.tool_calls ?? []
+
+  return {
+    content,
+    toolCalls,
+    finishReason: choice?.finish_reason ?? null,
+  }
 }
 
 export async function runGroqTranscription(audio: File, model: string) {

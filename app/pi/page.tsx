@@ -102,6 +102,16 @@ function isLegacySharedDemoDeviceId(value: string) {
   return value === 'pi_living_room' || value === 'pi_bedroom' || /^web-[a-z0-9-]+(?:-\d+)?$/i.test(value)
 }
 
+function shouldPersistExampleForAutoListen(example: string | null) {
+  if (!example) {
+    return false
+  }
+
+  return /\\(?:frac|sqrt|cdot|times|div|pm|leq|geq|neq|Delta|alpha|beta|theta|pi|Rightarrow|rightarrow|left|right)/.test(
+    example
+  ) || /[$^=+\-*/]/.test(example)
+}
+
 function dataUrlToPlayableSrc(dataUrl: string) {
   return dataUrl
 }
@@ -450,6 +460,7 @@ export default function PiDisplayPage() {
   const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const exampleContainerRef = useRef<HTMLDivElement | null>(null)
+  const exampleContentRef = useRef<HTMLDivElement | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
@@ -457,10 +468,12 @@ export default function PiDisplayPage() {
   const autoRestartTimeoutRef = useRef<number | null>(null)
   const activeAudioRef = useRef<HTMLAudioElement | null>(null)
   const activePlaybackStopRef = useRef<(() => void) | null>(null)
+  const persistExampleAcrossAutoListenRef = useRef(false)
 
   const interruptPlaybackAndStartRecording = () => {
     cancelAutoRestart()
     shouldRestartListeningAfterInterruptRef.current = true
+    persistExampleAcrossAutoListenRef.current = false
     stopActivePlayback()
     setAssistantText('')
     setAssistantExample(null)
@@ -532,6 +545,59 @@ export default function PiDisplayPage() {
     }
 
     return () => observer.disconnect()
+  }, [assistantExample, isExampleExpanded])
+
+  useEffect(() => {
+    if (!assistantExample || !isExampleExpanded) {
+      if (exampleContentRef.current) {
+        exampleContentRef.current.style.fontSize = ''
+        exampleContentRef.current.style.lineHeight = ''
+      }
+
+      return
+    }
+
+    const fitExpandedExample = () => {
+      const viewport = exampleContainerRef.current
+      const content = exampleContentRef.current
+
+      if (!viewport || !content) {
+        return
+      }
+
+      let scale = 1
+      const minScale = 0.62
+
+      content.style.fontSize = '1rem'
+      content.style.lineHeight = '1.55'
+
+      while (
+        (content.scrollHeight > viewport.clientHeight || content.scrollWidth > viewport.clientWidth) &&
+        scale > minScale
+      ) {
+        scale = Math.max(minScale, Number((scale - 0.04).toFixed(2)))
+        content.style.fontSize = `${scale}rem`
+        content.style.lineHeight = scale <= 0.76 ? '1.4' : '1.5'
+      }
+    }
+
+    const frame = window.requestAnimationFrame(fitExpandedExample)
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(fitExpandedExample)
+    })
+
+    if (exampleContainerRef.current) {
+      observer.observe(exampleContainerRef.current)
+    }
+
+    if (exampleContentRef.current) {
+      observer.observe(exampleContentRef.current)
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [assistantExample, isExampleExpanded])
 
   useEffect(() => {
@@ -707,7 +773,9 @@ export default function PiDisplayPage() {
     cancelAutoRestart()
     autoRestartTimeoutRef.current = window.setTimeout(() => {
       autoRestartTimeoutRef.current = null
-      void startRecording()
+      void startRecording({
+        preserveExample: persistExampleAcrossAutoListenRef.current,
+      })
     }, 350)
   }
 
@@ -736,6 +804,7 @@ export default function PiDisplayPage() {
     cancelAutoRestart()
     isStoppingRef.current = true
     shouldRestartListeningAfterInterruptRef.current = false
+    persistExampleAcrossAutoListenRef.current = false
     stopActivePlayback()
     cleanupRecorder()
     setIsRecording(false)
@@ -797,6 +866,7 @@ export default function PiDisplayPage() {
     }
 
     if (result.runtime.is_complete) {
+      persistExampleAcrossAutoListenRef.current = false
       setState('idle')
       setTranscript('Lesson complete.')
       setAssistantText(result.runtime.prompt_text)
@@ -813,6 +883,7 @@ export default function PiDisplayPage() {
     }
 
     setState('idle')
+    persistExampleAcrossAutoListenRef.current = false
     setTranscript(result.runtime.prompt_text)
     setAssistantExample(null)
     setIsExampleExpanded(false)
@@ -1040,6 +1111,7 @@ export default function PiDisplayPage() {
       const elapsedMs = Date.now() - recorderState.startedAt
 
       if (!recorderState.speechDetected) {
+        persistExampleAcrossAutoListenRef.current = false
         setState('idle')
         setTranscript(
           reason === 'manual' && elapsedMs < 400
@@ -1060,6 +1132,7 @@ export default function PiDisplayPage() {
 
       if (!samples.length) {
         if (elapsedMs < 400) {
+          persistExampleAcrossAutoListenRef.current = false
           setState('idle')
           setTranscript('Hold the button a little longer before releasing.')
           setAssistantText('')
@@ -1112,6 +1185,9 @@ export default function PiDisplayPage() {
       setTranscript(result.transcript)
       setAssistantText(result.assistant.text)
       setAssistantExample(result.assistant.example ?? null)
+      persistExampleAcrossAutoListenRef.current = shouldPersistExampleForAutoListen(
+        result.assistant.example ?? null
+      )
       setIsExampleExpanded(false)
       setExampleNeedsExpansion(false)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
@@ -1132,6 +1208,7 @@ export default function PiDisplayPage() {
         result.cosmo_state === 'idle' && !result.audio?.url && !result.assistant.text.trim()
 
       if (isNoInputResult) {
+        persistExampleAcrossAutoListenRef.current = false
         setState('idle')
         setTranscript(result.transcript)
         setAssistantText('')
@@ -1171,9 +1248,11 @@ export default function PiDisplayPage() {
               : 'Ask a question about this part.'
           )
           setAssistantText('')
-          setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+          if (!persistExampleAcrossAutoListenRef.current) {
+            setAssistantExample(null)
+            setIsExampleExpanded(false)
+            setExampleNeedsExpansion(false)
+          }
           return
         }
 
@@ -1190,6 +1269,7 @@ export default function PiDisplayPage() {
           if (shouldRestartListeningAfterInterruptRef.current) {
             return
           }
+          persistExampleAcrossAutoListenRef.current = false
           setState('idle')
           setTranscript(IDLE_TEXT)
           setAssistantText('')
@@ -1218,7 +1298,7 @@ export default function PiDisplayPage() {
     }
   }
 
-  const startRecording = async () => {
+  const startRecording = async (options?: { preserveExample?: boolean }) => {
     if (
       !isSupported ||
       isRecording ||
@@ -1234,9 +1314,12 @@ export default function PiDisplayPage() {
       cancelAutoRestart()
       setDebugTimings(null)
       setAssistantText('')
-      setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+      if (!options?.preserveExample) {
+        persistExampleAcrossAutoListenRef.current = false
+        setAssistantExample(null)
+        setIsExampleExpanded(false)
+        setExampleNeedsExpansion(false)
+      }
       setTranscript('Listening...')
       setState('listening')
       setIsRecording(true)
@@ -1384,9 +1467,9 @@ export default function PiDisplayPage() {
             </div>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_1fr_auto] gap-3 pt-3 sm:gap-4 sm:pt-4 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[auto_1fr_auto] lg:gap-x-6 lg:gap-y-3">
-              <div className="flex justify-center items-start lg:row-span-2 lg:pt-2">
-                <div className="flex w-full max-w-[34rem] flex-col items-center gap-3">
+            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_1fr_auto] gap-3 pt-3 sm:gap-4 sm:pt-4 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:gap-y-3">
+              <div className="flex min-h-0 justify-center items-stretch lg:row-span-2 lg:pt-2">
+                <div className="flex w-full max-w-[34rem] min-h-0 flex-col items-center gap-3 self-stretch">
                   {!isExampleExpanded && (
                     <CosmoFace
                       state={state}
@@ -1396,12 +1479,28 @@ export default function PiDisplayPage() {
                   {assistantExample ? (
                     <div className={cn(
                       "w-full rounded-2xl border border-white/15 bg-white/8 px-5 py-3 text-left shadow-lg flex flex-col min-h-0",
-                      isExampleExpanded ? "flex-1" : ""
+                      isExampleExpanded
+                        ? "max-h-[64dvh] sm:max-h-[68dvh] lg:flex-1 lg:h-full lg:max-h-none"
+                        : ""
                     )}>
                       <div className="flex items-center justify-between shrink-0 mb-1 z-10 relative bg-black/5 rounded-t-xl pb-1">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
                           Example
                         </p>
+                        <div className="flex items-center gap-2">
+                          {exampleNeedsExpansion && !isExampleExpanded && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setIsExampleExpanded(true)
+                              }}
+                              className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
+                            >
+                              Show More
+                            </button>
+                          )}
                         {isExampleExpanded && (
                           <button 
                             type="button" 
@@ -1415,31 +1514,24 @@ export default function PiDisplayPage() {
                             Minimize
                           </button>
                         )}
+                        </div>
                       </div>
                       <div 
                         ref={exampleContainerRef}
                         className={cn(
-                          "text-sm leading-snug text-foreground sm:text-base [&_.katex-display]:m-0 [&_.katex-display]:py-0 relative z-0",
-                          isExampleExpanded ? "overflow-y-auto pr-2 mt-1" : "overflow-hidden max-h-[30vh] mt-1"
+                          "text-sm text-foreground sm:text-base [&_.katex-display]:m-0 [&_.katex-display]:py-0 relative z-0 mt-1",
+                          isExampleExpanded
+                            ? "min-h-0 flex-1 overflow-hidden pr-1"
+                            : "overflow-hidden max-h-[38vh] sm:max-h-[40vh]"
                         )}
                       >
-                        <LatexText text={assistantExample} />
-                      </div>
-                      {exampleNeedsExpansion && !isExampleExpanded && (
-                        <div className="mt-2 shrink-0 border-t border-white/10 pt-2 text-center relative z-20 bg-black/20 rounded-b-xl">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setIsExampleExpanded(true)
-                            }}
-                            className="text-[11px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider w-full py-1 cursor-pointer relative z-30 pointer-events-auto"
-                          >
-                            Show More
-                          </button>
+                        <div
+                          ref={exampleContentRef}
+                          className="leading-[1.5] [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
+                        >
+                          <LatexText text={assistantExample} />
                         </div>
-                      )}
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -1482,7 +1574,7 @@ export default function PiDisplayPage() {
                 ) : null}
               </div>
 
-              <div className="flex flex-col items-center gap-3 lg:col-span-2 lg:pt-1">
+              <div className="flex flex-col items-center gap-3 lg:col-start-2 lg:h-full lg:justify-end lg:pt-1">
                 <button
                   type="button"
                   onClick={toggleRecording}

@@ -14,11 +14,6 @@ import {
 import { transcribeAudio } from '@/backend/providers/stt'
 import { synthesizeSpeech } from '@/backend/providers/tts'
 import { loadRecentSessionTurns, logTurn } from '@/backend/storage/mock-sessions'
-import {
-  composeAssistantLogText,
-  composeAssistantSpeechText,
-  parseAssistantResponse,
-} from '@/backend/utils/assistant-response'
 import { replaceLatexWithPlainText } from '@/lib/math/latex'
 import { getBlockedFallback } from '@/backend/utils/fallback-response'
 import { makeId } from '@/backend/utils/ids'
@@ -277,9 +272,12 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     }
 
     const llmStartedAt = performance.now()
-    const rawLessonAnswer =
+    const lessonReply =
       inputSafeguard.label === 'BORDERLINE'
-        ? `That is not an okay way to ask. Please use kind and respectful words. ${step.resume_line}`
+        ? {
+            explanation: `That is not an okay way to ask. Please use kind and respectful words. ${step.resume_line}`,
+            example: null,
+          }
         : await generateLessonPauseReply({
             transcript,
             lessonTitle: activeLesson.meta.title,
@@ -289,12 +287,8 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
           })
     timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
-    const parsedLessonAnswer = parseAssistantResponse(rawLessonAnswer)
-    const lessonAnswerText = parsedLessonAnswer.explanation
-    const lessonAnswerForSafety = composeAssistantSpeechText(parsedLessonAnswer)
-
     const outputSafeguardStartedAt = performance.now()
-    const outputSafeguard = await classifySafetyDetailed(lessonAnswerForSafety)
+    const outputSafeguard = await classifySafetyDetailed(lessonReply.explanation)
     timingsMs.output_safeguard = Math.round(performance.now() - outputSafeguardStartedAt)
 
     const safeAssistant =
@@ -304,9 +298,16 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
             explanation: getBlockedFallback(),
           }
         : {
-            example: parsedLessonAnswer.example,
-            explanation: lessonAnswerText,
+            example: lessonReply.example,
+            explanation: lessonReply.explanation,
           }
+
+    if (safeAssistant.example) {
+      const exampleSafeguard = await classifySafetyDetailed(safeAssistant.example)
+      if (exampleSafeguard.label !== 'SAFE') {
+        safeAssistant.example = null
+      }
+    }
 
     const safeAssistantSpeech = safeAssistant.explanation.trim()
 
@@ -388,7 +389,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   }
 
   const llmStartedAt = performance.now()
-  const rawAssistantText = await generateTeachingReply({
+  const assistantReply = await generateTeachingReply({
     transcript,
     mode: input.mode,
     lessonTitle: lesson?.meta.title ?? null,
@@ -401,11 +402,8 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
   })
   timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
-  const parsedAssistant = parseAssistantResponse(rawAssistantText)
-  const assistantForSafety = composeAssistantSpeechText(parsedAssistant)
-
   const outputSafeguardStartedAt = performance.now()
-  const outputSafeguard = await classifySafetyDetailed(assistantForSafety)
+  const outputSafeguard = await classifySafetyDetailed(assistantReply.explanation)
   timingsMs.output_safeguard = Math.round(performance.now() - outputSafeguardStartedAt)
   const safeAssistant =
     outputSafeguard.label === 'BLOCK'
@@ -414,9 +412,17 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
           explanation: getBlockedFallback(),
         }
       : {
-          example: parsedAssistant.example,
-          explanation: parsedAssistant.explanation,
+          example: assistantReply.example,
+          explanation: assistantReply.explanation,
         }
+
+  if (safeAssistant.example) {
+    const exampleSafeguard = await classifySafetyDetailed(safeAssistant.example)
+    if (exampleSafeguard.label !== 'SAFE') {
+      safeAssistant.example = null
+    }
+  }
+
   const safeAssistantSpeech = safeAssistant.explanation.trim()
   const ttsStartedAt = performance.now()
   let audio: SessionTurnResponse['audio'] = null
