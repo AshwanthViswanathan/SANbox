@@ -25,6 +25,24 @@ export default async function DashboardOverview() {
 
   const statCards = [
     {
+      label: 'Weekly activity',
+      value: String(stats.totalTurns),
+      sub: 'Total captured turns across all sessions.',
+      icon: MessageSquareText,
+      href: '/dashboard/sessions',
+      valueClassName: 'text-primary',
+      iconClassName: 'text-primary',
+    },
+    {
+      label: 'Safety flags',
+      value: String(stats.flaggedTurns),
+      sub: 'Moments that currently need parent review.',
+      icon: ShieldAlert,
+      href: '/dashboard/sessions?filter=flagged',
+      valueClassName: 'text-tertiary',
+      iconClassName: 'text-tertiary',
+    },
+    {
       label: 'Sessions',
       value: String(stats.totalSessions),
       sub: `${stats.totalTurns} turns captured`,
@@ -62,67 +80,44 @@ export default async function DashboardOverview() {
         badge="DEMO"
       />
 
-      <section className="stitch-panel overflow-hidden p-2">
-        <div className="grid gap-5 px-5 py-5 md:grid-cols-[1.7fr_1fr] md:px-6 md:py-6">
-          <div className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <Image
-                src={shorelineImage}
-                alt=""
-                fill
-                priority
-                className="object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.92),rgba(252,247,225,0.86),rgba(252,247,225,0.68))]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_32%)]" />
-            </div>
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 md:px-6 md:py-7">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <Image
+            src={shorelineImage}
+            alt=""
+            fill
+            priority
+            className="object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,247,225,0.92),rgba(252,247,225,0.86),rgba(252,247,225,0.68))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.22),transparent_32%)]" />
+        </div>
 
-            <div className="space-y-4">
-              <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
-                Monitoring hub
-              </div>
-              <div className="space-y-2">
-                <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
-                  Explore the shoreline of your child's latest sessions.
-                </h2>
-                <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-                  The dashboard stays sessions-first: recent activity, safety review, device health, and
-                  lesson progress are all visible in one calm monitoring surface.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link href="/dashboard/sessions">Open sessions</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
-                </Button>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div className="stitch-pill bg-tertiary-container/20 text-tertiary">
+            Monitoring hub
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="stitch-card p-6">
-              <div className="stitch-label">Weekly activity</div>
-              <div className="mt-2 flex items-center gap-3">
-                <MessageSquareText className="h-5 w-5 text-primary" />
-                <p className="stitch-heading text-3xl text-primary">{stats.totalTurns}</p>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">Total captured turns across all sessions.</p>
-            </div>
-            <div className="stitch-card p-6">
-              <div className="stitch-label">Safety flags</div>
-              <div className="mt-2 flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-tertiary" />
-                <p className="stitch-heading text-3xl text-tertiary">{stats.flaggedTurns}</p>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">Moments that currently need parent review.</p>
-            </div>
+          <div className="space-y-2">
+            <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl">
+              Explore the shoreline of your child's latest sessions.
+            </h2>
+            <p className="max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+              The dashboard stays sessions-first: recent activity, safety review, device health, and
+              lesson progress are all visible in one calm monitoring surface.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/dashboard/sessions">Open sessions</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/sessions?filter=flagged">Needs review</Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {statCards.map((stat) => {
           const Icon = stat.icon
 
@@ -135,9 +130,11 @@ export default async function DashboardOverview() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="stitch-label">{stat.label}</p>
-                  <p className="stitch-heading mt-3 text-3xl">{stat.value}</p>
+                  <p className={`stitch-heading mt-3 text-3xl ${stat.valueClassName ?? ''}`}>{stat.value}</p>
                 </div>
-                <span className="rounded-full bg-primary-container/20 p-3 text-primary transition-transform group-hover:-translate-y-0.5">
+                <span
+                  className={`rounded-full bg-primary-container/20 p-3 transition-transform group-hover:-translate-y-0.5 ${stat.iconClassName ?? 'text-primary'}`}
+                >
                   <Icon className="h-4 w-4" />
                 </span>
               </div>
