@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { Bot, Headphones, ShieldAlert, UserRound } from 'lucide-react'
+import { Bot, CheckCircle2, Headphones, HelpCircle, ShieldAlert, UserRound, XCircle } from 'lucide-react'
 
 import { FlagDeleteButton } from '@/components/app/flag-delete-button'
 import { PageHeader } from '@/components/app/page-header'
@@ -65,6 +65,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                 const flagged =
                   turn.input_label !== 'SAFE' ||
                   (turn.output_label !== null && turn.output_label !== 'SAFE')
+                const hasAssistantText = turn.assistant_text.trim().length > 0
 
                 return (
                   <div key={turn.turn_id} className="relative">
@@ -82,10 +83,21 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                             <p className="text-sm font-semibold text-foreground">Child</p>
                             <p className="text-xs text-muted-foreground">{formatTime(turn.created_at)}</p>
                             <SafeguardBadge label={turn.input_label} />
+                            {turn.checkpoint_submission && (
+                              <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-1 text-[10px] font-bold tracking-[0.18em] text-sky-700">
+                                CHECKPOINT ANSWER
+                              </span>
+                            )}
                           </div>
                           <div className="mt-2 rounded-l-[2rem] rounded-br-[2rem] border border-[color:rgba(178,173,154,0.18)] bg-white px-5 py-4 text-sm leading-7 text-foreground shadow-sm">
                             {turn.transcript}
                           </div>
+                          {turn.checkpoint_submission && (
+                            <CheckpointSubmissionCard
+                              choice={turn.checkpoint_submission.choice}
+                              isCorrect={turn.checkpoint_submission.is_correct}
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -117,18 +129,23 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                               />
                             )}
                           </div>
-                          <div
-                            className={`mt-2 rounded-r-[2rem] rounded-bl-[2rem] border px-5 py-4 text-sm leading-7 shadow-sm ${
-                              blocked
-                                ? 'border-destructive/25 bg-destructive/5 text-foreground'
-                                : 'border-primary-container/25 bg-primary-container/50 text-on-primary-container'
-                            }`}
-                          >
-                            <LatexText
-                                text={turn.assistant_text || ''}
+                          {hasAssistantText && (
+                            <div
+                              className={`mt-2 rounded-r-[2rem] rounded-bl-[2rem] border px-5 py-4 text-sm leading-7 shadow-sm ${
+                                blocked
+                                  ? 'border-destructive/25 bg-destructive/5 text-foreground'
+                                  : 'border-primary-container/25 bg-primary-container/50 text-on-primary-container'
+                              }`}
+                            >
+                              <LatexText
+                                text={turn.assistant_text}
                                 className="[&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
-                            />
-                          </div>
+                              />
+                            </div>
+                          )}
+                          {turn.interactive_checkpoint && (
+                            <CheckpointPromptCard checkpoint={turn.interactive_checkpoint} />
+                          )}
                           {turn.assistant_example && (
                             <div className="mt-3 rounded-[1.5rem] border border-accent/20 bg-white/80 px-5 py-4 shadow-sm">
                               <div className="flex items-center gap-2">
@@ -202,6 +219,93 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           </div>
         </aside>
       </section>
+    </div>
+  )
+}
+
+function CheckpointPromptCard({
+  checkpoint,
+}: {
+  checkpoint: NonNullable<Awaited<ReturnType<typeof getParentSessionDetail>>['turns'][number]['interactive_checkpoint']>
+}) {
+  const choices: Array<{ key: 'a' | 'b' | 'c' | 'd'; label: string }> = [
+    { key: 'a', label: checkpoint.choices.a },
+    { key: 'b', label: checkpoint.choices.b },
+    { key: 'c', label: checkpoint.choices.c },
+    { key: 'd', label: checkpoint.choices.d },
+  ]
+
+  return (
+    <div className="mt-3 rounded-[1.5rem] border border-sky-200/80 bg-white/90 px-5 py-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/12 text-sky-700">
+          <HelpCircle className="h-4 w-4" />
+        </span>
+        <span className="inline-flex rounded-full bg-sky-500/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-700">
+          Checkpoint
+        </span>
+      </div>
+      <div className="mt-3 text-sm font-medium leading-7 text-foreground">
+        <LatexText
+          text={checkpoint.prompt_text}
+          className="[&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
+        />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {choices.map((choice) => (
+          <div
+            key={choice.key}
+            className="flex items-start gap-3 rounded-[1.1rem] bg-sky-50/80 px-4 py-3 text-sm text-slate-800"
+          >
+            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-bold uppercase text-sky-700 ring-1 ring-sky-100">
+              {choice.key}
+            </span>
+            <LatexText
+              text={choice.label}
+              className="[&_.katex-display]:my-1 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
+            />
+          </div>
+        ))}
+      </div>
+      {checkpoint.reason_for_check && (
+        <p className="mt-3 text-xs leading-6 text-slate-500">
+          {checkpoint.reason_for_check}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CheckpointSubmissionCard({
+  choice,
+  isCorrect,
+}: {
+  choice: 'a' | 'b' | 'c' | 'd'
+  isCorrect: boolean
+}) {
+  return (
+    <div
+      className={`mt-3 flex items-center gap-3 rounded-[1.25rem] px-4 py-3 text-sm shadow-sm ${
+        isCorrect
+          ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+          : 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
+      }`}
+    >
+      <span
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${
+          isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+        }`}
+      >
+        {isCorrect ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+      </span>
+      <div>
+        <p className="font-semibold">
+          Chose {choice.toUpperCase()} {isCorrect ? 'and got it right' : 'for the checkpoint'}
+        </p>
+        <p className="text-xs leading-5 opacity-80">
+          {isCorrect ? 'The checkpoint answer was marked correct.' : 'The checkpoint answer was marked incorrect.'}
+        </p>
+      </div>
     </div>
   )
 }
