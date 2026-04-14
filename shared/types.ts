@@ -2,6 +2,8 @@ export type {
   AssignLessonRequest,
   AssignLessonResponse,
   CheckpointLessonRequest,
+  CheckpointSessionRequest,
+  CheckpointSubmission,
   CosmoState,
   ContinueLessonRequest,
   DeviceLessonAssignment,

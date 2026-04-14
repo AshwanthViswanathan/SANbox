@@ -56,7 +56,7 @@ export function LatexText({ text, className }: { text: string; className?: strin
   const parts = parseMathParts(compactText)
 
   return (
-    <div className={className}>
+    <span className={className}>
       {parts.map((part, index) => {
         if (part.type === 'text') {
           return (
@@ -76,6 +76,6 @@ export function LatexText({ text, className }: { text: string; className?: strin
           />
         )
       })}
-    </div>
+    </span>
   )
 }

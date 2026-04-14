@@ -3,9 +3,11 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { DetailedSafeguardResult } from '@/backend/providers/safeguard'
-import { composeAssistantLogText, parseAssistantResponse } from '@/backend/utils/assistant-response'
+import { composeAssistantLogText } from '@/backend/utils/assistant-response'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
+  CheckpointSubmission,
+  InteractiveCheckpoint,
   ParentSessionDetailResponse,
   ParentSessionsResponse,
   SessionTurnResponse,
@@ -35,6 +37,11 @@ type SessionTurnRow = {
   created_at: string
   transcript: string
   assistant_text: string
+  raw_response: {
+    assistant_example?: string | null
+    interactive_checkpoint?: ParentSessionDetailResponse['turns'][number]['interactive_checkpoint']
+    checkpoint_submission?: ParentSessionDetailResponse['turns'][number]['checkpoint_submission']
+  } | null
   input_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK'
   output_safeguard_label: 'SAFE' | 'BORDERLINE' | 'BLOCK' | null
   assistant_blocked: boolean
@@ -49,6 +56,15 @@ type SessionFlagTurnRow = {
 
 type DbTurnIndexRow = {
   turn_index: number
+}
+
+type CheckpointStateTurnRow = {
+  turn_index: number
+  mode: TeachBoxMode
+  raw_response: {
+    interactive_checkpoint?: InteractiveCheckpoint | null
+    checkpoint_submission?: CheckpointSubmission | null
+  } | null
 }
 
 type DeviceOwnerRow = {
@@ -70,6 +86,11 @@ type TurnLogMetadata = {
 export type RecentSessionTurn = {
   transcript: string
   assistantText: string
+}
+
+export type FreeChatCheckpointState = {
+  pendingCheckpoint: InteractiveCheckpoint | null
+  freeChatTurnsSinceLastCheckpoint: number
 }
 
 export async function buildSessionSummary(
@@ -158,21 +179,117 @@ export async function loadRecentSessionTurns(
 
   const { data: turns, error: turnsError } = await reader
     .from('turns')
-    .select('transcript, assistant_text')
+    .select('transcript, assistant_text, raw_response')
     .eq('session_id', sessionId)
     .order('turn_index', { ascending: false })
-    .limit(limit)
+    .limit(limit * 2)
 
   if (turnsError) {
     throw new Error(`Failed to load recent session turns: ${turnsError.message}`)
   }
 
-  return ((turns ?? []) as Array<{ transcript: string; assistant_text: string }>)
+  return ((
+    turns ?? []
+  ) as Array<{
+    transcript: string
+    assistant_text: string
+    raw_response?: {
+      checkpoint_submission?: CheckpointSubmission | null
+    } | null
+  }>)
+    .filter((turn) => !turn.raw_response?.checkpoint_submission)
     .reverse()
+    .slice(-limit)
     .map((turn) => ({
       transcript: turn.transcript,
       assistantText: turn.assistant_text,
     }))
+}
+
+export async function loadFreeChatCheckpointState(
+  sessionId: string,
+  deviceId: string
+): Promise<FreeChatCheckpointState> {
+  let reader: StorageReader
+  try {
+    reader = createAdminClient()
+  } catch {
+    return {
+      pendingCheckpoint: null,
+      freeChatTurnsSinceLastCheckpoint: Number.POSITIVE_INFINITY,
+    }
+  }
+
+  const { data: session, error: sessionError } = await reader
+    .from('sessions')
+    .select('id, device_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  if (sessionError) {
+    throw new Error(`Failed to load session for checkpoint state: ${sessionError.message}`)
+  }
+
+  if (!session || session.device_id !== deviceId) {
+    return {
+      pendingCheckpoint: null,
+      freeChatTurnsSinceLastCheckpoint: Number.POSITIVE_INFINITY,
+    }
+  }
+
+  const { data: turns, error: turnsError } = await reader
+    .from('turns')
+    .select('turn_index, mode, raw_response')
+    .eq('session_id', sessionId)
+    .order('turn_index', { ascending: true })
+
+  if (turnsError) {
+    throw new Error(`Failed to load checkpoint state: ${turnsError.message}`)
+  }
+
+  let latestCheckpointTurn: CheckpointStateTurnRow | null = null
+
+  for (const turn of (turns ?? []) as CheckpointStateTurnRow[]) {
+    if (turn.mode !== 'free_chat') {
+      continue
+    }
+
+    const checkpoint = turn.raw_response?.interactive_checkpoint
+    if (checkpoint?.source === 'free_chat') {
+      latestCheckpointTurn = turn
+    }
+  }
+
+  if (!latestCheckpointTurn?.raw_response?.interactive_checkpoint) {
+    return {
+      pendingCheckpoint: null,
+      freeChatTurnsSinceLastCheckpoint: Number.POSITIVE_INFINITY,
+    }
+  }
+
+  const checkpoint = latestCheckpointTurn.raw_response.interactive_checkpoint
+  let pendingCheckpoint: InteractiveCheckpoint | null = checkpoint
+  let freeChatTurnsSinceLastCheckpoint = 0
+
+  for (const turn of (turns ?? []) as CheckpointStateTurnRow[]) {
+    if (turn.turn_index <= latestCheckpointTurn.turn_index || turn.mode !== 'free_chat') {
+      continue
+    }
+
+    const submission = turn.raw_response?.checkpoint_submission
+    if (submission?.checkpoint_id === checkpoint.checkpoint_id) {
+      pendingCheckpoint = null
+      continue
+    }
+
+    pendingCheckpoint = null
+    freeChatTurnsSinceLastCheckpoint += 1
+  }
+
+  return {
+    pendingCheckpoint,
+    freeChatTurnsSinceLastCheckpoint,
+  }
 }
 
 export async function buildSessionDetail(
@@ -218,7 +335,7 @@ export async function buildSessionDetail(
   const { data: turns, error: turnsError } = await reader
     .from('turns')
     .select(
-      'id, created_at, transcript, assistant_text, input_safeguard_label, output_safeguard_label, assistant_blocked'
+      'id, created_at, transcript, assistant_text, raw_response, input_safeguard_label, output_safeguard_label, assistant_blocked'
     )
     .eq('session_id', sessionId)
     .order('turn_index', { ascending: true })
@@ -234,20 +351,18 @@ export async function buildSessionDetail(
       mode: (session as SessionDetailRow).mode,
       lesson_id: (session as SessionDetailRow).lesson_id,
     },
-    turns: ((turns ?? []) as SessionTurnRow[]).map((turn) => {
-      const assistant = parseAssistantResponse(turn.assistant_text)
-
-      return {
-        turn_id: turn.id,
-        created_at: turn.created_at,
-        transcript: turn.transcript,
-        assistant_text: assistant.explanation,
-        assistant_example: assistant.example,
-        input_label: turn.input_safeguard_label,
-        output_label: turn.output_safeguard_label,
-        blocked: turn.assistant_blocked,
-      }
-    }),
+    turns: ((turns ?? []) as SessionTurnRow[]).map((turn) => ({
+      turn_id: turn.id,
+      created_at: turn.created_at,
+      transcript: turn.transcript,
+      assistant_text: turn.assistant_text,
+      assistant_example: turn.raw_response?.assistant_example ?? null,
+      interactive_checkpoint: turn.raw_response?.interactive_checkpoint ?? null,
+      checkpoint_submission: turn.raw_response?.checkpoint_submission ?? null,
+      input_label: turn.input_safeguard_label,
+      output_label: turn.output_safeguard_label,
+      blocked: turn.assistant_blocked,
+    })),
   }
 }
 
@@ -372,7 +487,10 @@ export async function deleteTurnForOwner(
   }>
 
   const flaggedCount = turnRows.filter((turnRow) => isFlaggedTurn(turnRow)).length
-  const lastTurnAt = turnRows[0]?.created_at ?? (session as { started_at?: string | null }).started_at ?? new Date().toISOString()
+  const lastTurnAt =
+    turnRows[0]?.created_at ??
+    (session as { started_at?: string | null }).started_at ??
+    new Date().toISOString()
 
   const { error: sessionUpdateError } = await admin
     .from('sessions')
@@ -384,7 +502,9 @@ export async function deleteTurnForOwner(
     .eq('id', sessionId)
 
   if (sessionUpdateError) {
-    throw new Error(`Failed to update session counters after turn delete: ${sessionUpdateError.message}`)
+    throw new Error(
+      `Failed to update session counters after turn delete: ${sessionUpdateError.message}`
+    )
   }
 
   return {
@@ -643,6 +763,9 @@ export async function logTurn(
       turn_id: turn.turn_id,
       mode: turn.mode,
       blocked: turn.assistant.blocked,
+      assistant_example: turn.assistant.example ?? null,
+      interactive_checkpoint: turn.interactive_checkpoint ?? null,
+      checkpoint_submission: turn.checkpoint_submission ?? null,
     },
   })
 

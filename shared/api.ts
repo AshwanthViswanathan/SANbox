@@ -49,6 +49,12 @@ export const interactiveCheckpointSchema = z.object({
   reason_for_check: z.string().nullable().optional(),
 })
 
+export const checkpointSubmissionSchema = z.object({
+  checkpoint_id: z.string(),
+  choice: z.enum(['a', 'b', 'c', 'd']),
+  is_correct: z.boolean(),
+})
+
 export const lessonRuntimeSchema = z.object({
   step_type: lessonStepTypeSchema,
   input_mode: lessonInputModeSchema,
@@ -80,6 +86,7 @@ export const sessionTurnResponseSchema = z.object({
   lesson: lessonPointerSchema.nullable().optional(),
   lesson_runtime: lessonRuntimeSchema.nullable().optional(),
   interactive_checkpoint: interactiveCheckpointSchema.nullable().optional(),
+  checkpoint_submission: checkpointSubmissionSchema.nullable().optional(),
   debug: z
     .object({
       timings_ms: z.record(z.string(), z.number()),
@@ -158,6 +165,13 @@ export const checkpointLessonRequestSchema = z.object({
   choice: z.enum(['a', 'b', 'c', 'd']),
 })
 
+export const checkpointSessionRequestSchema = z.object({
+  session_id: z.string(),
+  device_id: z.string(),
+  checkpoint_id: z.string(),
+  choice: z.enum(['a', 'b', 'c', 'd']),
+})
+
 export const lessonInteractionResponseSchema = z.object({
   device_id: z.string(),
   session_id: z.string(),
@@ -190,6 +204,7 @@ export const parentSessionTurnSchema = z.object({
   assistant_text: z.string(),
   assistant_example: z.string().nullable().optional(),
   interactive_checkpoint: interactiveCheckpointSchema.nullable().optional(),
+  checkpoint_submission: checkpointSubmissionSchema.nullable().optional(),
   input_label: safeguardLabelSchema,
   output_label: safeguardLabelSchema.nullable(),
   blocked: z.boolean(),
@@ -230,6 +245,7 @@ export type LessonInputMode = z.infer<typeof lessonInputModeSchema>
 export type InteractionSource = z.infer<typeof interactionSourceSchema>
 export type LessonChoiceMap = z.infer<typeof lessonChoiceSchema>
 export type InteractiveCheckpoint = z.infer<typeof interactiveCheckpointSchema>
+export type CheckpointSubmission = z.infer<typeof checkpointSubmissionSchema>
 export type LessonRuntime = z.infer<typeof lessonRuntimeSchema>
 export type SessionTurnResponse = z.infer<typeof sessionTurnResponseSchema>
 export type LessonListItem = z.infer<typeof lessonListItemSchema>
@@ -243,6 +259,7 @@ export type StartLessonRequest = z.infer<typeof startLessonRequestSchema>
 export type StartLessonResponse = z.infer<typeof startLessonResponseSchema>
 export type ContinueLessonRequest = z.infer<typeof continueLessonRequestSchema>
 export type CheckpointLessonRequest = z.infer<typeof checkpointLessonRequestSchema>
+export type CheckpointSessionRequest = z.infer<typeof checkpointSessionRequestSchema>
 export type LessonInteractionResponse = z.infer<typeof lessonInteractionResponseSchema>
 export type ParentSessionsResponse = z.infer<typeof parentSessionsResponseSchema>
 export type ParentSessionDetailResponse = z.infer<typeof parentSessionDetailResponseSchema>

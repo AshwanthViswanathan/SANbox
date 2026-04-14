@@ -13,11 +13,20 @@ import {
 } from '@/backend/storage/mock-device-lessons'
 import { transcribeAudio } from '@/backend/providers/stt'
 import { synthesizeSpeech } from '@/backend/providers/tts'
-import { loadRecentSessionTurns, logTurn } from '@/backend/storage/mock-sessions'
+import {
+  loadFreeChatCheckpointState,
+  loadRecentSessionTurns,
+  logTurn,
+} from '@/backend/storage/mock-sessions'
 import { replaceLatexWithPlainText } from '@/lib/math/latex'
 import { getBlockedFallback } from '@/backend/utils/fallback-response'
 import { makeId } from '@/backend/utils/ids'
-import type { SessionTurnResponse, TeachBoxMode } from '@/shared/types'
+import type {
+  CheckpointSubmission,
+  InteractiveCheckpoint,
+  SessionTurnResponse,
+  TeachBoxMode,
+} from '@/shared/types'
 
 type HandleTurnInput = {
   audio: File
@@ -34,6 +43,14 @@ type TurnLogMetadata = {
   outputSafeguard: DetailedSafeguardResult | null
 }
 
+type HandleCheckpointAnswerInput = {
+  sessionId: string
+  deviceId: string
+  checkpointId: string
+  choice: 'a' | 'b' | 'c' | 'd'
+  ownerUserId?: string | null
+}
+
 function hasMeaningfulTranscript(transcript: string) {
   const normalized = transcript.trim()
   if (!normalized) {
@@ -42,6 +59,36 @@ function hasMeaningfulTranscript(transcript: string) {
 
   const alphanumericCount = (normalized.match(/[a-z0-9]/gi) ?? []).length
   return alphanumericCount >= 2
+}
+
+function renderInteractiveCheckpointPrompt(checkpoint: InteractiveCheckpoint) {
+  return `${checkpoint.prompt_text} A. ${checkpoint.choices.a} B. ${checkpoint.choices.b} C. ${checkpoint.choices.c} D. ${checkpoint.choices.d}`
+}
+
+function buildCheckpointFeedback(
+  checkpoint: InteractiveCheckpoint,
+  choice: 'a' | 'b' | 'c' | 'd'
+): {
+  transcript: string
+  feedbackText: string
+  submission: CheckpointSubmission
+} {
+  const choiceText = checkpoint.choices[choice]
+  const correctChoice = checkpoint.correct_choice ?? 'a'
+  const correctText = checkpoint.choices[correctChoice]
+  const isCorrect = correctChoice === choice
+
+  return {
+    transcript: `Checkpoint answer: ${choice.toUpperCase()}. ${choiceText}`,
+    feedbackText: isCorrect
+      ? `Nice work. That is correct. ${checkpoint.explanation ?? ''}`.trim()
+      : `Not quite. The correct answer was ${correctChoice.toUpperCase()}. ${correctText}. ${checkpoint.explanation ?? ''}`.trim(),
+    submission: {
+      checkpoint_id: checkpoint.checkpoint_id,
+      choice,
+      is_correct: isCorrect,
+    },
+  }
 }
 
 function buildNoInputTurn(params: {
@@ -99,10 +146,77 @@ function buildNoInputTurn(params: {
           is_complete: false,
         }
       : null,
+    interactive_checkpoint: null,
+    checkpoint_submission: null,
     debug: {
       timings_ms: params.timingsMs,
     },
   }
+}
+
+export async function handleFreeChatCheckpointAnswer(
+  input: HandleCheckpointAnswerInput
+): Promise<SessionTurnResponse> {
+  const checkpointState = await loadFreeChatCheckpointState(input.sessionId, input.deviceId)
+  const checkpoint = checkpointState.pendingCheckpoint
+
+  if (!checkpoint || checkpoint.checkpoint_id !== input.checkpointId) {
+    throw new Error('No matching free-chat checkpoint is waiting for an answer.')
+  }
+
+  const turnId = makeId('turn')
+  const timingsMs: Record<string, number> = {}
+  const { transcript, feedbackText, submission } = buildCheckpointFeedback(
+    checkpoint,
+    input.choice
+  )
+
+  const ttsStartedAt = performance.now()
+  let audio: SessionTurnResponse['audio'] = null
+  let ttsError: string | null = null
+
+  try {
+    audio = await synthesizeSpeech({
+      turnId,
+      text: replaceLatexWithPlainText(feedbackText),
+    })
+  } catch (error) {
+    ttsError = error instanceof Error ? error.message : 'Text-to-speech failed.'
+  }
+
+  timingsMs.tts = Math.round(performance.now() - ttsStartedAt)
+
+  const turn: SessionTurnResponse = {
+    turn_id: turnId,
+    session_id: input.sessionId,
+    device_id: input.deviceId,
+    mode: 'free_chat',
+    cosmo_state: audio ? 'speaking' : 'error',
+    transcript,
+    input_safeguard: null,
+    assistant: {
+      text: feedbackText,
+      blocked: false,
+      example: null,
+    },
+    output_safeguard: null,
+    audio,
+    lesson: null,
+    lesson_runtime: null,
+    interactive_checkpoint: null,
+    checkpoint_submission: submission,
+    debug: {
+      timings_ms: timingsMs,
+      tts_error: ttsError,
+    },
+  }
+
+  await logTurn(turn, input.ownerUserId, {
+    inputSafeguard: null,
+    outputSafeguard: null,
+  })
+
+  return turn
 }
 
 export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnResponse> {
@@ -190,6 +304,8 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
             is_complete: false,
           }
         : null,
+      interactive_checkpoint: null,
+      checkpoint_submission: null,
       debug: {
         timings_ms: timingsMs,
         tts_error: ttsError,
@@ -258,6 +374,8 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
           should_auto_continue: false,
           is_complete: false,
         },
+        interactive_checkpoint: null,
+        checkpoint_submission: null,
         debug: {
           timings_ms: timingsMs,
           tts_error: ttsError,
@@ -364,6 +482,8 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
         should_auto_continue: followupState.shouldAutoContinue,
         is_complete: false,
       },
+      interactive_checkpoint: null,
+      checkpoint_submission: null,
       debug: {
         timings_ms: timingsMs,
         tts_error: ttsError,
@@ -382,7 +502,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
 
   if (input.mode === 'free_chat') {
     try {
-      recentTurns = await loadRecentSessionTurns(input.sessionId, input.deviceId)
+      recentTurns = await loadRecentSessionTurns(input.sessionId, input.deviceId, 4)
     } catch {
       recentTurns = []
     }
@@ -399,6 +519,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       reason: inputSafeguard.reason,
       category: inputSafeguard.category,
     },
+    checkpointEligible: input.mode === 'free_chat',
   })
   timingsMs.llm = Math.round(performance.now() - llmStartedAt)
 
@@ -423,7 +544,34 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     }
   }
 
-  const safeAssistantSpeech = safeAssistant.explanation.trim()
+  let interactiveCheckpoint: InteractiveCheckpoint | null =
+    input.mode === 'free_chat' && outputSafeguard.label !== 'BLOCK'
+      ? assistantReply.checkpoint
+      : null
+
+  if (interactiveCheckpoint) {
+    const checkpointSafeguard = await classifySafetyDetailed(
+      [
+        interactiveCheckpoint.prompt_text,
+        interactiveCheckpoint.choices.a,
+        interactiveCheckpoint.choices.b,
+        interactiveCheckpoint.choices.c,
+        interactiveCheckpoint.choices.d,
+        interactiveCheckpoint.explanation ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+    )
+
+    if (checkpointSafeguard.label !== 'SAFE') {
+      interactiveCheckpoint = null
+    }
+  }
+
+  const safeAssistantText = interactiveCheckpoint ? '' : safeAssistant.explanation.trim()
+  const safeAssistantSpeech = interactiveCheckpoint
+    ? renderInteractiveCheckpointPrompt(interactiveCheckpoint)
+    : safeAssistantText
   const ttsStartedAt = performance.now()
   let audio: SessionTurnResponse['audio'] = null
   let ttsError: string | null = null
@@ -452,7 +600,7 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
       reason: inputSafeguard.reason,
     },
     assistant: {
-      text: safeAssistant.explanation,
+      text: safeAssistantText,
       blocked: outputSafeguard.label === 'BLOCK',
       example: safeAssistant.example,
     },
@@ -463,12 +611,18 @@ export async function handleTurn(input: HandleTurnInput): Promise<SessionTurnRes
     audio,
     lesson:
       input.mode === 'lesson' && lesson
-        ? {
-            lesson_id: input.lessonId ?? lesson.meta.lesson_id,
-            step_id: 'checkpoint-1',
-            title: lesson.meta.title,
-          }
+      ? {
+          lesson_id: input.lessonId ?? lesson.meta.lesson_id,
+          step_id: 'checkpoint-1',
+          title: lesson.meta.title,
+        }
         : null,
+    lesson_runtime:
+      input.mode === 'free_chat' && interactiveCheckpoint
+        ? assistantReply.checkpointRuntime
+        : null,
+    interactive_checkpoint: interactiveCheckpoint,
+    checkpoint_submission: null,
     debug: {
       timings_ms: timingsMs,
       tts_error: ttsError,

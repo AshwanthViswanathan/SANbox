@@ -8,7 +8,9 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type {
   CosmoState,
   DeviceLessonState,
+  InteractiveCheckpoint,
   LessonInteractionResponse,
+  LessonRuntime,
   SessionTurnResponse,
 } from '@/shared/types'
 import { Mic, Activity, AlertCircle, Copy, Link2, RefreshCw, Square } from 'lucide-react'
@@ -446,6 +448,8 @@ export default function PiDisplayPage() {
   const [transcript, setTranscript] = useState(IDLE_TEXT)
   const [assistantText, setAssistantText] = useState('')
   const [assistantExample, setAssistantExample] = useState<string | null>(null)
+  const [freeChatCheckpoint, setFreeChatCheckpoint] = useState<InteractiveCheckpoint | null>(null)
+  const [freeChatCheckpointRuntime, setFreeChatCheckpointRuntime] = useState<LessonRuntime | null>(null)
   const [isExampleExpanded, setIsExampleExpanded] = useState(false)
   const [exampleNeedsExpansion, setExampleNeedsExpansion] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -646,7 +650,10 @@ export default function PiDisplayPage() {
   }, [lessonState?.status])
 
   useEffect(() => {
-    if (lessonInteraction?.runtime.input_mode !== 'choice') {
+    if (
+      lessonInteraction?.runtime.input_mode !== 'choice' &&
+      freeChatCheckpointRuntime?.input_mode !== 'choice'
+    ) {
       return
     }
 
@@ -662,7 +669,7 @@ export default function PiDisplayPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [lessonInteraction?.runtime.input_mode])
+  }, [freeChatCheckpointRuntime?.input_mode, lessonInteraction?.runtime.input_mode])
 
   useEffect(() => {
     if (
@@ -811,6 +818,8 @@ export default function PiDisplayPage() {
   const handleLessonInteraction = async (result: LessonInteractionResponse) => {
     stopActivePlayback()
     setLessonInteraction(result)
+    setFreeChatCheckpoint(null)
+    setFreeChatCheckpointRuntime(null)
     setLessonState((current) => ({
       device_id: result.device_id,
       status: result.status,
@@ -825,6 +834,8 @@ export default function PiDisplayPage() {
 
     setAssistantText('')
     setAssistantExample(null)
+    setFreeChatCheckpoint(null)
+    setFreeChatCheckpointRuntime(null)
     setIsExampleExpanded(false)
     setExampleNeedsExpansion(false)
     setTranscript(result.runtime.prompt_text)
@@ -859,8 +870,10 @@ export default function PiDisplayPage() {
       setTranscript('Lesson complete.')
       setAssistantText(result.runtime.prompt_text)
       setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+      setFreeChatCheckpoint(null)
+      setFreeChatCheckpointRuntime(null)
+      setIsExampleExpanded(false)
+      setExampleNeedsExpansion(false)
       await fetchLessonState(result.device_id)
       return
     }
@@ -874,6 +887,8 @@ export default function PiDisplayPage() {
     persistExampleAcrossAutoListenRef.current = false
     setTranscript(result.runtime.prompt_text)
     setAssistantExample(null)
+    setFreeChatCheckpoint(null)
+    setFreeChatCheckpointRuntime(null)
     setIsExampleExpanded(false)
     setExampleNeedsExpansion(false)
     setAssistantText(
@@ -990,20 +1005,55 @@ export default function PiDisplayPage() {
     stopActivePlayback()
 
     try {
-      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/checkpoint`, {
+      if (lessonInteraction?.runtime.input_mode === 'choice') {
+        const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/lesson/checkpoint`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session_id: sessionIdRef.current,
+            choice,
+          }),
+        })
+
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | LessonInteractionResponse
+          | null
+
+        if (!response.ok) {
+          throw new Error(
+            payload && 'error' in payload ? payload.error : 'Unable to submit checkpoint answer.'
+          )
+        }
+
+        const parsed = lessonInteractionResponseSchema.parse(payload)
+        setIsLessonLoading(false)
+        await handleLessonInteraction(parsed)
+        return
+      }
+
+      if (!freeChatCheckpoint) {
+        throw new Error('No free-chat checkpoint is waiting for an answer.')
+      }
+
+      const response = await fetch('/api/v1/demo/checkpoint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           session_id: sessionIdRef.current,
+          device_id: deviceIdRef.current,
+          checkpoint_id: freeChatCheckpoint.checkpoint_id,
           choice,
         }),
       })
 
       const payload = (await response.json().catch(() => null)) as
         | { error?: string }
-        | LessonInteractionResponse
+        | SessionTurnResponse
         | null
 
       if (!response.ok) {
@@ -1012,9 +1062,42 @@ export default function PiDisplayPage() {
         )
       }
 
-      const parsed = lessonInteractionResponseSchema.parse(payload)
-      setIsLessonLoading(false)
-      await handleLessonInteraction(parsed)
+      const result = sessionTurnResponseSchema.parse(payload)
+      setDebugTimings(result.debug?.timings_ms ?? null)
+      setTranscript(result.transcript)
+      setAssistantText(result.assistant.text)
+      setAssistantExample(result.assistant.example ?? null)
+      setFreeChatCheckpoint(result.interactive_checkpoint ?? null)
+      setFreeChatCheckpointRuntime(null)
+      persistExampleAcrossAutoListenRef.current = shouldPersistExampleForAutoListen(
+        result.assistant.example ?? null
+      )
+      setIsExampleExpanded(false)
+      setExampleNeedsExpansion(false)
+      setState(result.assistant.blocked ? 'blocked' : 'speaking')
+
+      try {
+        await playAssistantAudio(
+          result.audio?.url ?? null,
+          getSpokenAssistantText(result.assistant.text),
+          activeAudioRef,
+          activePlaybackStopRef
+        )
+        setState('idle')
+        setTranscript(IDLE_TEXT)
+        if (autoListenEnabled) {
+          scheduleAutoRestart()
+        }
+      } catch (playbackError) {
+        if (isPlaybackInterruptedError(playbackError)) {
+          setState('idle')
+          return
+        }
+
+        throw playbackError
+      } finally {
+        activeAudioRef.current = null
+      }
     } catch (error) {
       setState('error')
       setTranscript(
@@ -1069,8 +1152,10 @@ export default function PiDisplayPage() {
         )
         setAssistantText('')
         setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+        setFreeChatCheckpoint(null)
+        setFreeChatCheckpointRuntime(null)
+        setIsExampleExpanded(false)
+        setExampleNeedsExpansion(false)
         if (lessonState?.status === 'active' && lessonAllowsVoiceInput) {
           scheduleAutoRestart()
         } else if (autoListenEnabled) {
@@ -1086,8 +1171,10 @@ export default function PiDisplayPage() {
           setTranscript('Hold the button a little longer before releasing.')
           setAssistantText('')
           setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+          setFreeChatCheckpoint(null)
+          setFreeChatCheckpointRuntime(null)
+          setIsExampleExpanded(false)
+          setExampleNeedsExpansion(false)
           if (autoListenEnabled) {
             scheduleAutoRestart()
           }
@@ -1130,10 +1217,17 @@ export default function PiDisplayPage() {
         (await response.json()) as SessionTurnResponse
       )
 
+      const freeChatCheckpointRuntime =
+        result.mode === 'free_chat' && result.lesson_runtime?.input_mode === 'choice'
+          ? result.lesson_runtime
+          : null
+      const nextTranscript = freeChatCheckpointRuntime?.prompt_text ?? result.transcript
       setDebugTimings(result.debug?.timings_ms ?? null)
-      setTranscript(result.transcript)
+      setTranscript(nextTranscript)
       setAssistantText(result.assistant.text)
       setAssistantExample(result.assistant.example ?? null)
+      setFreeChatCheckpoint(result.interactive_checkpoint ?? null)
+      setFreeChatCheckpointRuntime(freeChatCheckpointRuntime)
       persistExampleAcrossAutoListenRef.current = shouldPersistExampleForAutoListen(
         result.assistant.example ?? null
       )
@@ -1141,7 +1235,7 @@ export default function PiDisplayPage() {
       setExampleNeedsExpansion(false)
       setState(result.assistant.blocked ? 'blocked' : 'speaking')
       const serverTtsError = result.debug?.tts_error ?? null
-      if (result.lesson_runtime) {
+      if (result.mode === 'lesson' && result.lesson_runtime) {
         setLessonInteraction((current) =>
           current
             ? {
@@ -1162,8 +1256,10 @@ export default function PiDisplayPage() {
         setTranscript(result.transcript)
         setAssistantText('')
         setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+        setFreeChatCheckpoint(null)
+        setFreeChatCheckpointRuntime(null)
+        setIsExampleExpanded(false)
+        setExampleNeedsExpansion(false)
 
         if (result.lesson_runtime?.input_mode === 'voice') {
           scheduleAutoRestart()
@@ -1187,6 +1283,10 @@ export default function PiDisplayPage() {
         setState('idle')
         if (result.lesson_runtime?.should_auto_continue && sessionIdRef.current) {
           await continueLesson(sessionIdRef.current)
+          return
+        }
+
+        if (freeChatCheckpointRuntime) {
           return
         }
 
@@ -1223,6 +1323,8 @@ export default function PiDisplayPage() {
             setTranscript(IDLE_TEXT)
             setAssistantText('')
             setAssistantExample(null)
+            setFreeChatCheckpoint(null)
+            setFreeChatCheckpointRuntime(null)
             setIsExampleExpanded(false)
             setExampleNeedsExpansion(false)
           }
@@ -1252,6 +1354,7 @@ export default function PiDisplayPage() {
   const startRecording = async (options?: {
     preserveExample?: boolean
     preserveAssistantContent?: boolean
+    preserveCheckpoint?: boolean
   }) => {
     if (
       !isSupported ||
@@ -1268,6 +1371,10 @@ export default function PiDisplayPage() {
       setDebugTimings(null)
       if (!options?.preserveAssistantContent) {
         setAssistantText('')
+      }
+      if (!options?.preserveCheckpoint) {
+        setFreeChatCheckpoint(null)
+        setFreeChatCheckpointRuntime(null)
       }
       if (!options?.preserveExample) {
         persistExampleAcrossAutoListenRef.current = false
@@ -1405,6 +1512,10 @@ export default function PiDisplayPage() {
     !isLessonLoading &&
     (state === 'speaking' || state === 'blocked') &&
     lessonState?.status !== 'active'
+  const activeChoiceChoices =
+    lessonInteraction?.runtime.input_mode === 'choice'
+      ? lessonInteraction.runtime.choices ?? null
+      : freeChatCheckpointRuntime?.choices ?? null
 
   return (
     <div
@@ -1415,7 +1526,7 @@ export default function PiDisplayPage() {
     >
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-2">
         <div className="flex min-h-0 flex-1 items-stretch justify-center">
-          <div className="flex h-full w-full flex-col rounded-[2rem] border border-white/20 bg-white/10 px-4 py-4 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
+          <div className="relative flex h-full w-full flex-col rounded-[2rem] border border-white/20 bg-white/10 px-4 py-4 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
             <div className="flex w-full items-center justify-between opacity-80">
             <div className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider">
               {getStateIcon()}
@@ -1509,7 +1620,7 @@ export default function PiDisplayPage() {
                     '[display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden'
                   )}
                 >
-                  {transcript}
+                  <LatexText text={transcript} />
                 </p>
                 {assistantText ? (
                   <div className="mx-auto w-full max-w-2xl rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-left lg:mx-0">
@@ -1605,8 +1716,10 @@ export default function PiDisplayPage() {
                     window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
                     setAssistantText('')
                     setAssistantExample(null)
-    setIsExampleExpanded(false)
-    setExampleNeedsExpansion(false)
+                    setFreeChatCheckpoint(null)
+                    setFreeChatCheckpointRuntime(null)
+                    setIsExampleExpanded(false)
+                    setExampleNeedsExpansion(false)
                     setDebugTimings(null)
                     setLessonInteraction(null)
                     setIsRecording(false)
@@ -1643,7 +1756,7 @@ export default function PiDisplayPage() {
                   {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
                 </button>
                 </div>
-                {lessonInteraction?.runtime.input_mode === 'choice' && lessonInteraction.runtime.choices ? (
+                {activeChoiceChoices ? (
                   <div className="grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2">
                   {(['a', 'b', 'c', 'd'] as const).map((choiceKey) => (
                     <button
@@ -1651,10 +1764,15 @@ export default function PiDisplayPage() {
                       type="button"
                       onClick={() => void submitCheckpointChoice(choiceKey)}
                       disabled={isLessonLoading}
-                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex items-start gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <span className="mr-2 font-mono uppercase">{choiceKey}.</span>
-                      {lessonInteraction.runtime.choices?.[choiceKey]}
+                      <span className="shrink-0 font-mono uppercase">{choiceKey}.</span>
+                      <LatexText
+                        className="min-w-0 flex-1"
+                        text={
+                          activeChoiceChoices[choiceKey] ?? ''
+                        }
+                      />
                     </button>
                   ))}
                   </div>

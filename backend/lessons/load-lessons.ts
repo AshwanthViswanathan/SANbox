@@ -79,6 +79,35 @@ export type TeachBoxParsedLesson = {
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---/
 const TEACHBOX_STEP_PATTERN = /```teachbox-step\s*?\r?\n([\s\S]*?)\r?\n```/g
 
+function normalizeChoiceText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function validateLessonCheckpointStep(step: z.infer<typeof checkpointStepSchema>) {
+  const normalizedChoices = {
+    a: normalizeChoiceText(step.choices.a),
+    b: normalizeChoiceText(step.choices.b),
+    c: normalizeChoiceText(step.choices.c),
+    d: normalizeChoiceText(step.choices.d),
+  }
+
+  const uniqueChoices = new Set(Object.values(normalizedChoices))
+  if (uniqueChoices.size !== 4) {
+    throw new Error(`Lesson checkpoint "${step.step_id}" must have four distinct answer choices.`)
+  }
+
+  const correctValue = normalizedChoices[step.correct_choice]
+  const distractorValues = (['a', 'b', 'c', 'd'] as const)
+    .filter((choice) => choice !== step.correct_choice)
+    .map((choice) => normalizedChoices[choice])
+
+  if (distractorValues.includes(correctValue)) {
+    throw new Error(
+      `Lesson checkpoint "${step.step_id}" must not repeat the correct answer text in another choice.`
+    )
+  }
+}
+
 function parseFrontmatter(raw: string) {
   const match = raw.match(FRONTMATTER_PATTERN)
   if (!match) return {}
@@ -123,6 +152,10 @@ function parseTeachboxStepBlocks(raw: string) {
     }
 
     stepIds.add(step.step_id)
+
+    if (step.type === 'checkpoint_mcq') {
+      validateLessonCheckpointStep(step)
+    }
   }
 
   const completionCount = steps.filter((step) => step.type === 'completion').length
@@ -156,13 +189,13 @@ export async function loadLessons(): Promise<LessonListItem[]> {
     if (!entry.endsWith('.md')) continue
     const fullPath = path.join(lessonsDir, entry)
     const raw = await fs.readFile(fullPath, 'utf8')
-    const meta = lessonMetaSchema.parse(parseFrontmatter(raw))
+    const parsedLesson = parseLesson(raw)
 
     lessons.push({
-      lesson_id: meta.lesson_id,
-      title: meta.title,
-      grade_band: meta.grade_band,
-      topic: meta.topic,
+      lesson_id: parsedLesson.meta.lesson_id,
+      title: parsedLesson.meta.title,
+      grade_band: parsedLesson.meta.grade_band,
+      topic: parsedLesson.meta.topic,
     })
   }
 

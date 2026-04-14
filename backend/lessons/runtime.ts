@@ -92,6 +92,24 @@ function renderCheckpointPrompt(question: string, choices: LessonChoiceMap) {
   return `${question} A. ${choices.a} B. ${choices.b} C. ${choices.c} D. ${choices.d}`
 }
 
+export function buildCheckpointChoiceRuntime(
+  question: string,
+  choices: LessonChoiceMap,
+  overrides?: Partial<LessonRuntime>
+): LessonRuntime {
+  return {
+    step_type: 'checkpoint_mcq',
+    input_mode: 'choice',
+    prompt_text: renderCheckpointPrompt(question, choices),
+    choices,
+    followups_remaining: null,
+    attempts_remaining: null,
+    should_auto_continue: false,
+    is_complete: false,
+    ...overrides,
+  }
+}
+
 export function buildLessonRuntime(
   lesson: TeachBoxParsedLesson,
   state: LessonSessionState,
@@ -130,17 +148,10 @@ export function buildLessonRuntime(
         }
       }
     case 'checkpoint_mcq':
-      return {
-        step_type: 'checkpoint_mcq',
-        input_mode: 'choice',
-        prompt_text: renderCheckpointPrompt(step.question, step.choices),
-        choices: step.choices,
-        followups_remaining: null,
+      return buildCheckpointChoiceRuntime(step.question, step.choices, {
         attempts_remaining: Math.max(0, step.retry_limit - state.checkpoint_attempts),
-        should_auto_continue: false,
-        is_complete: false,
         ...overrides,
-      }
+      })
     case 'completion':
       return {
         step_type: 'completion',
@@ -203,5 +214,6 @@ export function createLessonInteractionResponse(params: {
     status: params.status,
     audio: params.audio,
     runtime: params.runtime ?? buildLessonRuntime(params.lesson, params.state),
+    interactive_checkpoint: null,
   }
 }
