@@ -102,7 +102,7 @@ export function DeviceLessonPanel({
             lessonState.status === 'none'
               ? 'bg-muted text-muted-foreground'
               : lessonState.status === 'active'
-                ? 'bg-emerald-500/10 text-emerald-700'
+                ? 'bg-primary/10 text-primary'
                 : lessonState.status === 'completed'
                   ? 'bg-sky-500/10 text-sky-700'
                   : 'bg-amber-500/12 text-amber-700'
@@ -187,7 +187,7 @@ export function DeviceLessonPanel({
             'mt-4 rounded-2xl px-3 py-3 text-xs leading-5',
             error
               ? 'bg-destructive/8 text-destructive'
-              : 'bg-emerald-500/10 text-emerald-700'
+              : 'bg-primary/10 text-primary'
           )}
         >
           {error ? (

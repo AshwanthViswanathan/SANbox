@@ -2,6 +2,17 @@ import { PageHeader } from '@/components/app/page-header'
 import { LessonAssignmentPanel } from '@/components/app/lesson-assignment-panel'
 import { getDeviceSnapshots, getLessonUsage } from '@/lib/parent-dashboard-data'
 
+const LESSON_DESCRIPTIONS: Record<string, string> = {
+  'basic-multiplication':
+    'Introduces multiplication as equal groups and repeated addition using concrete visual examples.',
+  'ocean-habitats':
+    'Explains how different ocean habitats support different animals, from shorelines to reefs to deep water.',
+  'plant-growth':
+    'Shows how sunlight helps plants make food and what can happen when a plant does not get enough light.',
+  'moon-basics':
+    'Teaches that the moon reflects sunlight and looks different because we see different parts of its lit side.',
+}
+
 export default async function LessonsPage() {
   const [lessons, devices] = await Promise.all([getLessonUsage(), getDeviceSnapshots()])
   const activeLessons = lessons.filter((lesson) => lesson.usageCount > 0).length
@@ -48,7 +59,7 @@ export default async function LessonsPage() {
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-medium ${
                       isActive
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+                        ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
                         : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200'
                     }`}
                   >
@@ -65,8 +76,7 @@ export default async function LessonsPage() {
                 </div>
 
                 <p className="text-sm leading-6 text-slate-500">
-                  Parents can confirm that the lesson exists, see which grade band it targets, and verify that the session
-                  really ran as a guided lesson dive instead of free chat.
+                  {LESSON_DESCRIPTIONS[lesson.lesson_id] ?? `${lesson.title} for grade band ${lesson.grade_band}.`}
                 </p>
 
                 <LessonAssignmentPanel

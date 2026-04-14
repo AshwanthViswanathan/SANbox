@@ -56,7 +56,7 @@ export default async function DevicesPage() {
                       <div
                         className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
                           isOnline
-                            ? 'bg-emerald-500/10 text-emerald-700'
+                            ? 'bg-primary/10 text-primary'
                             : 'bg-muted text-muted-foreground'
                         }`}
                       >
@@ -78,7 +78,7 @@ export default async function DevicesPage() {
                           : paused
                             ? 'bg-amber-500/12 text-amber-700'
                             : isOnline
-                              ? 'bg-emerald-500/10 text-emerald-700'
+                              ? 'bg-primary/10 text-primary'
                               : 'bg-muted text-muted-foreground'
                       }`}
                     >
@@ -102,7 +102,7 @@ export default async function DevicesPage() {
                       <div
                         className={`h-full rounded-full ${
                           device.battery > 40
-                            ? 'bg-emerald-500'
+                            ? 'bg-primary'
                             : device.battery > 20
                               ? 'bg-amber-500'
                               : 'bg-destructive'

@@ -28,46 +28,49 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.04 260);
 
-  --primary: oklch(0.68 0.14 234);
-  --primary-foreground: oklch(0.99 0.003 95);
+  --primary: #2c8383;
+  --primary-foreground: #f4fbfb;
+  --primary-container: #d8ecec;
+  --on-primary-container: #184b4b;
 
   --secondary: oklch(0.94 0.04 105);
   --secondary-foreground: oklch(0.3 0.05 240);
 
-  --muted: oklch(0.955 0.016 180);
+  --muted: #eef6f5;
   --muted-foreground: oklch(0.53 0.05 235);
 
-  --accent: oklch(0.76 0.16 14);
-  --accent-foreground: oklch(0.99 0.004 95);
+  --accent: #2c8383;
+  --accent-foreground: #f4fbfb;
 
   --destructive: oklch(0.67 0.19 18);
   --destructive-foreground: oklch(0.98 0.01 85);
 
-  --border: oklch(0.91 0.022 220);
-  --input: oklch(0.91 0.022 220);
-  --ring: oklch(0.68 0.14 234);
+  --border: #d3e3e2;
+  --input: #d3e3e2;
+  --ring: #2c8383;
 
-  --chart-1: oklch(0.68 0.14 234);
+  --chart-1: #2c8383;
   --chart-2: oklch(0.82 0.16 85);
   --chart-3: oklch(0.76 0.16 14);
-  --chart-4: oklch(0.74 0.1 190);
+  --chart-4: #62b7b7;
   --chart-5: oklch(0.78 0.11 145);
 
   --radius: 0.9rem;
 
-  --sidebar: oklch(0.96 0.02 185);
+  --sidebar: #f2fbfa;
   --sidebar-foreground: oklch(0.2 0.04 260);
-  --sidebar-primary: oklch(0.68 0.14 234);
-  --sidebar-primary-foreground: oklch(0.98 0.01 85);
-  --sidebar-accent: oklch(0.92 0.03 190);
-  --sidebar-accent-foreground: oklch(0.2 0.04 260);
-  --sidebar-border: oklch(0.87 0.03 200);
-  --sidebar-ring: oklch(0.68 0.14 234);
+  --sidebar-primary: #2c8383;
+  --sidebar-primary-foreground: #f4fbfb;
+  --sidebar-accent: #dceeee;
+  --sidebar-accent-foreground: #184b4b;
+  --sidebar-border: #d3e3e2;
+  --sidebar-ring: #2c8383;
 
   --surface: oklch(0.97 0.012 88);
   --surface-raised: oklch(0.995 0.004 95);
-  --surface-sunken: oklch(0.94 0.025 190);
-  --accent-glow: oklch(0.76 0.16 14 / 0.18);
+  --surface-sunken: #e3efee;
+  --surface-container-low: #eff7f6;
+  --accent-glow: rgba(44, 131, 131, 0.18);
   --gold-highlight: oklch(0.85 0.16 90);
   --seafoam: oklch(0.9 0.05 185);
   --ocean-deep: oklch(0.51 0.13 240);
@@ -90,6 +93,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -119,6 +124,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-gold: var(--gold-highlight);
+  --color-surface-container-low: var(--surface-container-low);
 }
 
 @layer base {
@@ -150,19 +156,19 @@
   .beach-shell {
     background:
       radial-gradient(circle at top left, rgba(251, 113, 133, 0.18), transparent 26%),
-      radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 24%),
+      radial-gradient(circle at top right, rgba(44, 131, 131, 0.2), transparent 24%),
       linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(236, 249, 247, 0.88));
   }
   .wave-grid {
     background-image:
-      linear-gradient(to right, rgba(14, 165, 233, 0.08) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(14, 165, 233, 0.08) 1px, transparent 1px);
+      linear-gradient(to right, rgba(44, 131, 131, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(44, 131, 131, 0.08) 1px, transparent 1px);
     background-size: 48px 48px;
   }
   .beach-card {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 252, 251, 0.94));
-    box-shadow: 0 24px 80px rgba(14, 165, 233, 0.08);
+    box-shadow: 0 24px 80px rgba(44, 131, 131, 0.1);
     @apply border border-white/70 rounded-[1.5rem];
   }
   .font-beach-display {
@@ -181,7 +187,7 @@
   }
   .stitch-shell {
     background:
-      radial-gradient(circle at top right, rgba(94, 177, 252, 0.18), transparent 20%),
+      radial-gradient(circle at top right, rgba(44, 131, 131, 0.18), transparent 20%),
       radial-gradient(circle at bottom left, rgba(252, 216, 70, 0.16), transparent 24%),
       linear-gradient(180deg, #fcf7e1 0%, #f7f1d9 100%);
   }
@@ -190,7 +196,7 @@
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     box-shadow:
-      0 26px 56px -24px rgba(0, 95, 153, 0.22),
+      0 26px 56px -24px rgba(44, 131, 131, 0.22),
       0 10px 24px -18px rgba(17, 24, 39, 0.18);
     @apply rounded-[2rem] border border-white/70;
   }
@@ -198,20 +204,20 @@
     background: linear-gradient(180deg, rgba(255, 251, 245, 0.78), rgba(255, 255, 255, 0.62));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 18px 40px -28px rgba(0, 95, 153, 0.26);
+    box-shadow: 0 18px 40px -28px rgba(44, 131, 131, 0.22);
     @apply rounded-[1.5rem] border border-white/60;
   }
   .stitch-page-shell {
     background: linear-gradient(180deg, rgba(255, 251, 245, 0.44), rgba(255, 255, 255, 0.3));
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 24px 56px -40px rgba(0, 95, 153, 0.28);
+    box-shadow: 0 24px 56px -40px rgba(44, 131, 131, 0.24);
     @apply rounded-[2rem] border border-white/35;
   }
   .stitch-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 241, 217, 0.78));
     box-shadow:
-      0 22px 44px -28px rgba(0, 95, 153, 0.2),
+      0 22px 44px -28px rgba(44, 131, 131, 0.18),
       0 8px 18px -14px rgba(17, 24, 39, 0.14);
     @apply rounded-[1.75rem] border border-[color:rgba(178,173,154,0.18)];
   }
@@ -227,6 +233,6 @@
     @apply text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--muted-foreground)];
   }
   .coastal-gradient {
-    background: linear-gradient(135deg, #005f99 0%, #5eb1fc 100%);
+    background: linear-gradient(135deg, #236969 0%, #2c8383 56%, #62b7b7 100%);
   }
 }

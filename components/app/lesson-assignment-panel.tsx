@@ -112,7 +112,7 @@ export function LessonAssignmentPanel({
                   className={cn(
                     'rounded-full px-2 py-1 text-[10px] font-bold tracking-[0.18em]',
                     device.lessonState.status === 'active'
-                      ? 'bg-emerald-500/10 text-emerald-700'
+                      ? 'bg-primary/10 text-primary'
                       : device.lessonState.status === 'completed'
                         ? 'bg-sky-500/10 text-sky-700'
                         : 'bg-amber-500/12 text-amber-700'
@@ -183,7 +183,7 @@ export function LessonAssignmentPanel({
             'mt-4 rounded-2xl px-3 py-3 text-xs leading-5',
             error
               ? 'bg-destructive/8 text-destructive'
-              : 'bg-emerald-500/10 text-emerald-700'
+              : 'bg-primary/10 text-primary'
           )}
         >
           {error ? (

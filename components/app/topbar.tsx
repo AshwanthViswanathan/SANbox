@@ -28,7 +28,9 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
     (pathname.startsWith('/dashboard/sessions/') ? 'Session Details' : 'Dashboard')
   const showTopTitle =
     pathname !== '/dashboard/sessions' &&
+    pathname !== '/dashboard/lessons' &&
     pathname !== '/dashboard/devices' &&
+    pathname !== '/dashboard/settings' &&
     title !== 'Overview'
 
   return (
@@ -36,7 +38,7 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
       <header className="sticky top-0 z-30 flex h-24 shrink-0 items-center justify-between bg-transparent px-6 sm:px-10">
         <div className="flex items-center gap-3">
           <button
-            className="md:hidden p-1.5 rounded text-muted-foreground hover:text-foreground"
+            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary md:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Open sidebar"
           >
@@ -45,19 +47,19 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           {showTopTitle && (
             <div className="hidden px-4 py-3 md:flex md:flex-col">
               <div className="mt-1 flex items-center gap-1.5 text-xs font-mono text-slate-700/80">
-                <span className="text-slate-950 font-semibold text-lg">{title}</span>
+                <span className="font-semibold text-lg text-primary">{title}</span>
               </div>
             </div>
           )}
           {showTopTitle && (
-            <p className="px-4 py-2 text-sm font-bold text-slate-950 md:hidden">{title}</p>
+            <p className="px-4 py-2 text-sm font-bold text-primary md:hidden">{title}</p>
           )}
         </div>
 
-        <div className="bg-white/60 backdrop-blur-xl shadow-sm border border-white/50 rounded-[1.25rem] flex items-center gap-3 px-5 py-2.5">
+        <div className="flex items-center gap-3 rounded-[1.25rem] border border-primary/12 bg-white/60 px-5 py-2.5 shadow-[0_16px_36px_-28px_rgba(44,131,131,0.65)] backdrop-blur-xl">
           <div className="hidden lg:block text-right">
             <p className="text-sm font-bold text-slate-950">{email}</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-700/70">SANbox family account</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/75">SANbox family account</p>
           </div>
           <SignOutButton />
         </div>
@@ -69,7 +71,7 @@ export function DashboardTopbar({ email }: DashboardTopbarProps) {
           <div className="relative flex h-full w-72 p-4">
             <DashboardSidebar email={email} />
             <button
-              className="absolute top-7 right-7 rounded-full bg-white/80 p-2 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+              className="absolute top-7 right-7 rounded-full bg-white/80 p-2 text-sidebar-foreground/60 transition-colors hover:bg-primary/10 hover:text-primary"
               onClick={() => setMobileOpen(false)}
               aria-label="Close sidebar"
             >

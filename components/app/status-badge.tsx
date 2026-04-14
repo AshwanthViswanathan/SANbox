@@ -7,7 +7,7 @@ export type Status = DeviceStatus | Level
 
 const statusConfig: Record<Status, { dot: string; text: string; label: string }> = {
   // Device
-  online: { dot: 'bg-emerald-500', text: 'text-emerald-600', label: 'Online' },
+  online: { dot: 'bg-primary', text: 'text-primary', label: 'Online' },
   offline: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground', label: 'Offline' },
   warning: { dot: 'bg-yellow-500', text: 'text-yellow-600', label: 'Warning' },
   // Log level

@@ -1,17 +1,7 @@
 'use client'
 
 import { startTransition, useEffect, useState } from 'react'
-import {
-  Mic,
-  MicOff,
-  PauseCircle,
-  PlayCircle,
-  Power,
-  PowerOff,
-  Trash2,
-  Volume2,
-  VolumeX,
-} from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
@@ -41,7 +31,6 @@ export function DeviceCommandPanel({
   const router = useRouter()
   const [controlState, setControlState] = useState<ParentDeviceControlState>(DEFAULT_STATE)
   const [ready, setReady] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,35 +70,6 @@ export function DeviceCommandPanel({
     }
   }, [deviceId])
 
-  async function persistState(nextState: ParentDeviceControlState) {
-    setControlState(nextState)
-    setSaving(true)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/v1/parent/devices/${deviceId}/control`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          controls: nextState,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update device controls')
-      }
-
-      const payload = parentDeviceControlResponseSchema.parse(await response.json())
-      setControlState(payload.controls)
-    } catch {
-      setError('Unable to save device controls right now.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function deleteDevice() {
     const confirmed = window.confirm(
       `Delete ${deviceName}? This will remove the device and its recorded sessions from the dashboard.`
@@ -146,7 +106,6 @@ export function DeviceCommandPanel({
   const poweredOff = controlState.device === 'off'
   const microphoneOff = controlState.microphone === 'off'
   const speakerOff = controlState.speaker === 'off'
-  const disabled = !ready || saving || deleting
 
   return (
     <div className="rounded-[1.25rem] border border-border bg-background px-4 py-4 sm:col-span-2">
@@ -164,77 +123,11 @@ export function DeviceCommandPanel({
               ? 'bg-amber-500/12 text-amber-700'
               : poweredOff
                 ? 'bg-destructive/10 text-destructive'
-                : 'bg-emerald-500/10 text-emerald-700'
+                : 'bg-primary/10 text-primary'
           )}
         >
-          {saving ? 'SAVING' : paused ? 'PAUSED' : poweredOff ? 'OFF' : 'ACTIVE'}
+          {paused ? 'PAUSED' : poweredOff ? 'OFF' : 'ACTIVE'}
         </span>
-      </div>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <Button
-          type="button"
-          variant={paused ? 'default' : 'outline'}
-          className="h-auto min-h-10 whitespace-normal px-3 py-2 text-center leading-5"
-          onClick={() =>
-            void persistState({
-              ...controlState,
-              device: paused ? 'active' : 'paused',
-            })
-          }
-          disabled={disabled || poweredOff}
-        >
-          {paused ? <PlayCircle className="h-4 w-4" /> : <PauseCircle className="h-4 w-4" />}
-          {paused ? 'Resume device' : 'Pause device'}
-        </Button>
-
-        <Button
-          type="button"
-          variant={poweredOff ? 'default' : 'outline'}
-          className="h-auto min-h-10 whitespace-normal px-3 py-2 text-center leading-5"
-          onClick={() =>
-            void persistState({
-              ...controlState,
-              device: poweredOff ? 'active' : 'off',
-            })
-          }
-          disabled={disabled}
-        >
-          {poweredOff ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
-          {poweredOff ? 'Turn device back on' : 'Turn off device'}
-        </Button>
-
-        <Button
-          type="button"
-          variant={microphoneOff ? 'default' : 'outline'}
-          className="h-auto min-h-10 whitespace-normal px-3 py-2 text-center leading-5"
-          onClick={() =>
-            void persistState({
-              ...controlState,
-              microphone: microphoneOff ? 'on' : 'off',
-            })
-          }
-          disabled={disabled || poweredOff}
-        >
-          {microphoneOff ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-          {microphoneOff ? 'Turn microphone on' : 'Turn microphone off'}
-        </Button>
-
-        <Button
-          type="button"
-          variant={speakerOff ? 'default' : 'outline'}
-          className="h-auto min-h-10 whitespace-normal px-3 py-2 text-center leading-5"
-          onClick={() =>
-            void persistState({
-              ...controlState,
-              speaker: speakerOff ? 'on' : 'off',
-            })
-          }
-          disabled={disabled || poweredOff}
-        >
-          {speakerOff ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          {speakerOff ? 'Turn speaker on' : 'Turn speaker off'}
-        </Button>
       </div>
 
       <div className="mt-4">
@@ -243,7 +136,7 @@ export function DeviceCommandPanel({
           variant="destructive"
           className="w-full"
           onClick={() => void deleteDevice()}
-          disabled={deleting || saving}
+          disabled={deleting || !ready}
         >
           <Trash2 className="h-4 w-4" />
           {deleting ? 'Deleting device...' : 'Delete device'}
