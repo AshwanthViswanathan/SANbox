@@ -72,11 +72,11 @@ export default async function DemoLoginPage({
 
 function normalizeNextPath(input: string | undefined) {
   if (!input || !input.startsWith('/')) {
-    return '/dashboard'
+    return '/pi'
   }
 
   if (input.startsWith('//')) {
-    return '/dashboard'
+    return '/pi'
   }
 
   return input

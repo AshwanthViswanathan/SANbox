@@ -7,10 +7,30 @@ import {
   isDemoPasswordProtectionEnabled,
 } from '@/lib/security/demo-password'
 
+function isDemoProtectedPath(pathname: string) {
+  if (pathname === '/pi' || pathname.startsWith('/pi/')) {
+    return true
+  }
+
+  if (pathname.startsWith('/api/v1/demo/')) {
+    return true
+  }
+
+  if (pathname.startsWith('/api/v1/audio/')) {
+    return true
+  }
+
+  if (pathname.startsWith('/api/v1/devices/')) {
+    return pathname.endsWith('/claim') || pathname.includes('/lesson')
+  }
+
+  return false
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
 
-  if (isDemoPasswordProtectionEnabled()) {
+  if (isDemoPasswordProtectionEnabled() && isDemoProtectedPath(pathname)) {
     const allowlistedPath =
       pathname === '/demo-login' ||
       pathname === '/api/demo-login' ||

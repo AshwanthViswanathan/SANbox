@@ -62,11 +62,11 @@ export async function POST(request: Request) {
 
 function normalizeNextPath(input: string | undefined) {
   if (!input || !input.startsWith('/')) {
-    return '/dashboard'
+    return '/pi'
   }
 
   if (input.startsWith('//')) {
-    return '/dashboard'
+    return '/pi'
   }
 
   return input

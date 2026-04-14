@@ -69,9 +69,6 @@ export function Hero() {
               <Button size="lg" variant="outline" onClick={openPreSignUpTab}>
                 Pre Sign Up
               </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/pi">Demo</Link>
-              </Button>
             </div>
 
             <div className="mt-12 grid max-w-2xl gap-4 sm:grid-cols-3">

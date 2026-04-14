@@ -83,9 +83,6 @@ export function Features() {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="min-h-14 w-full text-base sm:text-lg" asChild>
-                  <Link href="/pi" className="flex w-full items-center justify-center">Demo</Link>
-                </Button>
               </div>
             </div>
           </div>
