@@ -589,6 +589,7 @@ export default function PiDisplayPage() {
   const [lessonState, setLessonState] = useState<DeviceLessonState | null>(null)
   const [lessonInteraction, setLessonInteraction] = useState<LessonInteractionResponse | null>(null)
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
+  const [isNerdModeEnabled, setIsNerdModeEnabled] = useState(false)
   const [copiedState, setCopiedState] = useState<'device_id' | 'device_link' | null>(null)
   const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
@@ -2097,11 +2098,22 @@ export default function PiDisplayPage() {
                   </p>
                 ) : null}
                 {debugTimings ? (
-                  <p className="text-[11px] font-mono text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
-                    {Object.entries(debugTimings)
-                      .map(([key, value]) => `${key}:${value}ms`)
-                      .join(' | ')}
-                  </p>
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsNerdModeEnabled((current) => !current)}
+                      className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/70 transition hover:text-muted-foreground"
+                    >
+                      Nerd mode
+                    </button>
+                    {isNerdModeEnabled ? (
+                      <p className="text-[11px] font-mono text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                        {Object.entries(debugTimings)
+                          .map(([key, value]) => `${key}:${value}ms`)
+                          .join(' | ')}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
 
