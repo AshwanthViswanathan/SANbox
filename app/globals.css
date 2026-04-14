@@ -219,7 +219,8 @@
     @apply inline-flex items-center rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em];
   }
   .stitch-heading {
-    font-family: var(--font-display);
+    font-family: 'BeachVibe', var(--font-display), cursive;
+    letter-spacing: 0.01em;
     @apply font-black tracking-tight text-[color:var(--foreground)];
   }
   .stitch-label {

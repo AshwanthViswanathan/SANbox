@@ -47,7 +47,7 @@ export function DashboardSidebar({ email: _email }: DashboardSidebarProps) {
           </div>
         </div>
 
-        <nav className="px-2">
+        <nav className="px-3">
           <ul className="flex flex-col">
             {navItems.map((item, index) => {
               const Icon = item.icon
@@ -65,15 +65,15 @@ export function DashboardSidebar({ email: _email }: DashboardSidebarProps) {
                     className={cn(
                       'font-beach-vibe flex items-center gap-3 px-4 py-3 text-[18px] font-semibold tracking-[0.08em] transition-colors',
                       active
-                        ? 'text-white'
+                        ? 'text-[#e7d2a2]'
                         : 'text-white/90 hover:text-white'
                     )}
                   >
-                    <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-white' : 'text-white/90')} />
+                    <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-[#e7d2a2]' : 'text-white/90')} />
                     <span>{item.label}</span>
                   </Link>
                   {!isLast && (
-                    <div className="absolute bottom-0 left-12 right-4 h-[1px] bg-black" />
+                    <div className="absolute bottom-0 left-4 right-4 h-[1px] bg-white/90" />
                   )}
                 </li>
               )

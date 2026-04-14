@@ -15,7 +15,7 @@ import type {
   LessonRuntime,
   SessionTurnResponse,
 } from '@/shared/types'
-import { Mic, Activity, AlertCircle, Copy, Link2, Loader2, RefreshCw, Square } from 'lucide-react'
+import { Mic, Activity, AlertCircle, Copy, Link2, Loader2, RefreshCw, Square, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceLessonStateSchema,
@@ -593,6 +593,7 @@ export default function PiDisplayPage() {
   const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(false)
+  const [isSessionDeleting, setIsSessionDeleting] = useState(false)
   const [isMicrophonePermissionPending, setIsMicrophonePermissionPending] = useState(false)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const exampleContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1737,6 +1738,76 @@ export default function PiDisplayPage() {
     }
   }
 
+  const deleteCurrentSession = async () => {
+    if (isLessonLoading || isSessionDeleting) {
+      return
+    }
+
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
+      return
+    }
+
+    if (!linkedAccountEmail) {
+      setAuthErrorMessage('Sign in with Google to delete dashboard sessions.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Delete session ${sessionId}? This removes it from the dashboard and deletes its turn history.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsSessionDeleting(true)
+    setAuthErrorMessage(null)
+
+    try {
+      cancelAutoRestart()
+      persistExampleAcrossAutoListenRef.current = false
+      preserveScreenOnPlaybackStopRef.current = false
+      cleanupRecorder()
+      stopActivePlayback()
+
+      const response = await fetch(`/api/v1/parent/sessions/${sessionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? 'Failed to delete session.')
+      }
+
+      const nextSessionId = makeBrowserId('session')
+      sessionIdRef.current = nextSessionId
+      window.localStorage.setItem('teachbox_demo_session_id', nextSessionId)
+      setAssistantText('')
+      setAssistantExample(null)
+      setFreeChatCheckpoint(null)
+      setFreeChatCheckpointRuntime(null)
+      setIsExampleExpanded(false)
+      setExampleNeedsExpansion(false)
+      setDebugTimings(null)
+      setLessonInteraction(null)
+      setIsRecording(false)
+      setCopiedState(null)
+      setState('idle')
+      updateTranscript(IDLE_TEXT)
+
+      if (deviceIdRef.current) {
+        await fetchLessonState(deviceIdRef.current)
+      }
+    } catch (error) {
+      setAuthErrorMessage(
+        error instanceof Error ? error.message : 'Unable to delete session right now.'
+      )
+    } finally {
+      setIsSessionDeleting(false)
+    }
+  }
+
   const handleGoogleSignIn = async () => {
     if (!showGoogleSignIn || isAuthLoading) {
       return
@@ -2001,7 +2072,7 @@ export default function PiDisplayPage() {
               <div className="min-h-0 space-y-2 text-center lg:text-left">
                 <p
                   className={cn(
-                    'text-lg font-semibold leading-snug sm:text-xl lg:text-[1.7rem]',
+                    'font-beach-vibe text-lg font-semibold leading-snug sm:text-xl lg:text-[1.7rem]',
                     state === 'speaking' ? 'text-primary' : 'opacity-80',
                     '[display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden'
                   )}
@@ -2106,6 +2177,17 @@ export default function PiDisplayPage() {
                     <span className="inline-flex items-center gap-2">
                       <ShortcutBadge label="3" className="text-black" />
                       <span>New Session</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteCurrentSession()}
+                    disabled={isLessonLoading || isSessionDeleting || !linkedAccountEmail}
+                    className="px-4 py-2 text-xs font-medium rounded-md bg-destructive/90 text-destructive-foreground hover:bg-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>{isSessionDeleting ? 'Deleting Session...' : 'Delete Session'}</span>
                     </span>
                   </button>
                   <button

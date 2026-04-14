@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowUpRight, Clock3, ShieldAlert } from 'lucide-react'
 import sereneBeachImage from '@/docs/serene-beach-landscape-calm-waters-gentle-waves-free-vector.jpg'
 
+import { ClearSessionsButton } from '@/components/app/clear-sessions-button'
 import { EmptyState } from '@/components/app/empty-state'
 import { SessionDeleteButton } from '@/components/app/session-delete-button'
 import { ModeBadge } from '@/components/app/teachbox-badges'
@@ -62,7 +63,8 @@ export default async function SessionsPage({
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
         {filters.map((item) => {
           const isActive = item.key === activeFilter
           const href = item.key === 'all' ? '/dashboard/sessions' : `/dashboard/sessions?filter=${item.key}`
@@ -84,6 +86,10 @@ export default async function SessionsPage({
             </Button>
           )
         })}
+        </div>
+        <div className="w-full sm:w-auto sm:min-w-[22rem]">
+          <ClearSessionsButton sessionCount={sessions.length} />
+        </div>
       </div>
 
       {filteredSessions.length === 0 ? (

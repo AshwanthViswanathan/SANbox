@@ -1,5 +1,6 @@
 import { Cpu, MessageSquareText, Mic, Radio, Volume2, Wifi, WifiOff } from 'lucide-react'
 
+import { DeviceCommandPanel } from '@/components/app/device-command-panel'
 import { DeviceLessonPanel } from '@/components/app/device-lesson-panel'
 import { PageHeader } from '@/components/app/page-header'
 import { ModeBadge } from '@/components/app/teachbox-badges'
@@ -29,7 +30,7 @@ export default async function DevicesPage() {
 
       {devices.length === 0 ? (
         <div className="bg-white rounded-[1.5rem] ring-1 ring-slate-900/5 shadow-sm px-8 py-10 text-center">
-          <p className="text-2xl font-bold tracking-tight text-slate-900">No SANbox devices registered yet</p>
+          <p className="font-beach-vibe text-2xl font-bold tracking-tight text-slate-900">No SANbox devices registered yet</p>
           <p className="mt-3 max-w-2xl mx-auto text-sm leading-6 text-slate-500">
             Open <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md">/pi</span> on a teammate device first. As soon as that page loads,
             the demo will register itself here and you can assign a lesson.
@@ -164,6 +165,11 @@ export default async function DevicesPage() {
                     deviceName={device.name}
                     lessons={lessons}
                     initialLessonState={device.lessonState}
+                  />
+                  <DeviceCommandPanel
+                    deviceId={device.id}
+                    deviceName={device.name}
+                    isOnline={isOnline}
                   />
 
                   <div className="rounded-[1.5rem] bg-white/80 px-4 py-4">

@@ -386,17 +386,7 @@ export async function deleteSessionForOwner(ownerUserId: string, sessionId: stri
     return { status: 'forbidden' as const }
   }
 
-  const { error: deviceResetError } = await admin
-    .from('devices')
-    .update({
-      active_session_id: null,
-      current_step_id: null,
-    })
-    .eq('active_session_id', sessionId)
-
-  if (deviceResetError) {
-    throw new Error(`Failed to clear active device session: ${deviceResetError.message}`)
-  }
+  await clearDeviceSessionPointers(admin, [sessionId], [session.device_id])
 
   const { error: turnsDeleteError } = await admin
     .from('turns')
@@ -420,6 +410,133 @@ export async function deleteSessionForOwner(ownerUserId: string, sessionId: stri
     status: 'deleted' as const,
     session_id: sessionId,
   }
+}
+
+export async function deleteAllSessionsForOwner(ownerUserId: string) {
+  const admin = createAdminClient()
+  const ownedDeviceIds = await getOwnedDeviceIds(admin, ownerUserId)
+  const sessionIds = new Set<string>()
+  const deviceIds = new Set<string>()
+
+  const { data: directSessions, error: directSessionsError } = await admin
+    .from('sessions')
+    .select('id, device_id')
+    .eq('owner_user_id', ownerUserId)
+
+  if (directSessionsError) {
+    throw new Error(`Failed to load owned sessions: ${directSessionsError.message}`)
+  }
+
+  for (const session of (directSessions ?? []) as Array<{ id: string; device_id?: string | null }>) {
+    sessionIds.add(session.id)
+    if (session.device_id) {
+      deviceIds.add(session.device_id)
+    }
+  }
+
+  if (ownedDeviceIds.length > 0) {
+    const { data: deviceSessions, error: deviceSessionsError } = await admin
+      .from('sessions')
+      .select('id, device_id')
+      .in('device_id', ownedDeviceIds)
+
+    if (deviceSessionsError) {
+      throw new Error(`Failed to load device sessions: ${deviceSessionsError.message}`)
+    }
+
+    for (const session of (deviceSessions ?? []) as Array<{ id: string; device_id: string | null }>) {
+      sessionIds.add(session.id)
+      if (session.device_id) {
+        deviceIds.add(session.device_id)
+      }
+    }
+  }
+
+  const sessionIdList = Array.from(sessionIds)
+
+  if (sessionIdList.length === 0) {
+    return {
+      status: 'deleted' as const,
+      deleted_count: 0,
+    }
+  }
+
+  await clearDeviceSessionPointers(admin, sessionIdList, Array.from(deviceIds))
+
+  const { error: turnsDeleteError } = await admin
+    .from('turns')
+    .delete()
+    .in('session_id', sessionIdList)
+
+  if (turnsDeleteError) {
+    throw new Error(`Failed to delete session turns: ${turnsDeleteError.message}`)
+  }
+
+  const { error: sessionsDeleteError } = await admin
+    .from('sessions')
+    .delete()
+    .in('id', sessionIdList)
+
+  if (sessionsDeleteError) {
+    throw new Error(`Failed to delete sessions: ${sessionsDeleteError.message}`)
+  }
+
+  return {
+    status: 'deleted' as const,
+    deleted_count: sessionIdList.length,
+  }
+}
+
+async function clearDeviceSessionPointers(
+  admin: ReturnType<typeof createAdminClient>,
+  sessionIds: string[],
+  deviceIds: string[]
+) {
+  if (sessionIds.length === 0) {
+    return
+  }
+
+  const { error: primaryError } = await admin
+    .from('devices')
+    .update({
+      active_session_id: null,
+      current_step_id: null,
+    })
+    .in('active_session_id', sessionIds)
+
+  if (!primaryError) {
+    return
+  }
+
+  const missingActiveSessionColumn = primaryError.message.includes("'active_session_id' column")
+  const missingCurrentStepColumn = primaryError.message.includes("'current_step_id' column")
+
+  if (!missingActiveSessionColumn && !missingCurrentStepColumn) {
+    throw new Error(`Failed to clear active device sessions: ${primaryError.message}`)
+  }
+
+  if (deviceIds.length === 0) {
+    return
+  }
+
+  const { error: fallbackError } = await admin
+    .from('devices')
+    .update({
+      current_step_id: null,
+    })
+    .in('id', deviceIds)
+
+  if (!fallbackError) {
+    return
+  }
+
+  const fallbackMissingCurrentStepColumn = fallbackError.message.includes("'current_step_id' column")
+
+  if (fallbackMissingCurrentStepColumn) {
+    return
+  }
+
+  throw new Error(`Failed to clear device lesson pointers: ${fallbackError.message}`)
 }
 
 export async function deleteTurnForOwner(

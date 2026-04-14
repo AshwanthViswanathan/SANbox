@@ -149,7 +149,7 @@ export default async function DashboardOverview() {
                 <Clock3 className="h-5 w-5 text-white" />
               </span>
               <div>
-                <p className="text-2xl font-extrabold text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">Session History</p>
+                <p className="font-beach-vibe text-2xl font-extrabold text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">Session History</p>
               </div>
             </div>
             <Button variant="outline" size="sm" className="rounded-full shadow-sm font-semibold" asChild>
@@ -198,7 +198,7 @@ export default async function DashboardOverview() {
                 <ShieldAlert className="h-5 w-5 text-rose-500" />
               </span>
               <div>
-                <p className="text-2xl font-extrabold text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">Safety Review</p>
+                <p className="font-beach-vibe text-2xl font-extrabold text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">Safety Review</p>
               </div>
             </div>
           </div>
@@ -209,7 +209,7 @@ export default async function DashboardOverview() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 mb-4">
                   <CheckCircle2 className="h-6 w-6 text-emerald-500" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">No flagged turns</h3>
+                <h3 className="font-beach-vibe text-lg font-bold text-slate-900">No flagged turns</h3>
                 <p className="mt-2 text-sm font-medium text-slate-500 max-w-[250px] leading-relaxed">
                   Everything in the current demo sessions passed through cleanly.
                 </p>
