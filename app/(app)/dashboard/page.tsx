@@ -99,7 +99,7 @@ export default async function DashboardOverview() {
         </div>
 
         <div className="max-w-3xl px-5 py-5 sm:px-6">
-          <h2 className="stitch-heading max-w-2xl text-4xl md:text-5xl text-slate-900 drop-shadow-sm">
+          <h2 className="font-beach-vibe max-w-2xl text-4xl font-semibold tracking-[0.05em] text-slate-900 drop-shadow-sm md:text-5xl">
             SANbox Dashboard
           </h2>
           <div className="flex flex-wrap gap-3 mt-6">

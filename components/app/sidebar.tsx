@@ -30,10 +30,10 @@ export function DashboardSidebar({ email: _email }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="fixed left-0 top-[6.5rem] z-40 hidden w-64 shrink-0 px-4 py-4 text-sidebar-foreground md:flex">
+    <aside className="fixed left-0 top-[6.5rem] z-40 hidden w-64 shrink-0 px-4 py-4 text-white md:flex">
       <div className="space-y-5">
         <div className="px-3">
-          <div className="flex items-center">
+          <div className="flex items-center rounded-[1.5rem] border border-black/20 bg-[rgba(229,229,229,0.94)] px-4 py-4 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.45)]">
             <span className="flex w-full items-center justify-start overflow-hidden">
               <Image
                 src="/sanbox-dashboard-logo.png"
@@ -63,18 +63,17 @@ export function DashboardSidebar({ email: _email }: DashboardSidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-4 py-3 text-[15px] font-semibold transition-colors',
+                      'font-beach-vibe flex items-center gap-3 px-4 py-3 text-[18px] font-semibold tracking-[0.08em] transition-colors',
                       active
-                        ? 'text-slate-950'
-                        : 'text-slate-900 hover:text-black'
+                        ? 'text-white'
+                        : 'text-white/90 hover:text-white'
                     )}
                   >
-                    <Icon className={cn("h-5 w-5 shrink-0", active ? "text-slate-950" : "text-slate-700")} />
+                    <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-white' : 'text-white/90')} />
                     <span>{item.label}</span>
                   </Link>
-                  {/* Subtle dividing line, inset on left and right */}
                   {!isLast && (
-                    <div className="absolute bottom-0 left-12 right-4 h-[1px] bg-slate-300/80" />
+                    <div className="absolute bottom-0 left-12 right-4 h-[1px] bg-black" />
                   )}
                 </li>
               )
