@@ -332,7 +332,7 @@ function createCheckpointSummaryChoice(explanation: string) {
     .trim()
 
   if (!normalized) {
-    return 'It matches what SANbox just explained.'
+    return 'It matches what San just explained.'
   }
 
   const firstSentence =
@@ -364,15 +364,15 @@ type CheckpointValidationResult = {
 
 function buildDeterministicCheckpointCandidate(explanation: string): CheckpointToolArgs {
   return normalizeCheckpointCandidate({
-    question: 'Which choice best matches what SANbox just taught?',
+    question: 'Which choice best matches what San just taught?',
     choices: {
       a: createCheckpointSummaryChoice(explanation),
-      b: 'It means the opposite of the idea SANbox explained.',
+      b: 'It means the opposite of the idea San explained.',
       c: 'It is about a totally different topic.',
       d: 'There was not enough information to answer.',
     },
     correct_choice: 'a',
-    explanation: 'A is correct because it matches what SANbox just explained.',
+    explanation: 'A is correct because it matches what San just explained.',
     reason_for_check: 'The child asked for a quick check.',
   })
 }
@@ -660,7 +660,7 @@ function parseCheckpointFromLabeledText(raw: string) {
     question: promptLine,
     choices,
     correct_choice: (correctMatch?.[1]?.toLowerCase() as 'a' | 'b' | 'c' | 'd') ?? 'a',
-    explanation: explanationMatch?.[1]?.trim() || 'That is the best match for the idea SANbox explained.',
+    explanation: explanationMatch?.[1]?.trim() || 'That is the best match for the idea San explained.',
     reason_for_check: null,
   })
 }
@@ -776,7 +776,7 @@ async function generateFreeChatCheckpoint(params: {
           .slice(-3)
           .map(
             (turn, index) =>
-              `Turn ${index + 1} child: ${turn.transcript}\nTurn ${index + 1} SANbox: ${turn.assistantText}`
+              `Turn ${index + 1} child: ${turn.transcript}\nTurn ${index + 1} San: ${turn.assistantText}`
           )
           .join('\n\n')
       : 'No recent conversation context.'
@@ -790,11 +790,11 @@ async function generateFreeChatCheckpoint(params: {
       {
         role: 'system',
         content:
-          'You create one short multiple-choice comprehension check for a K-5 child. Return raw JSON only with this exact shape: {"question":"...","choices":{"a":"...","b":"...","c":"...","d":"..."},"correct_choice":"a","explanation":"...","reason_for_check":"..."}. The checkpoint must test the concept that SANbox just explained. Do not introduce a new topic. The child-facing question must be answerable by choosing A, B, C, or D only. Do not ask open-ended or free-response questions. Do not ask the child to explain, describe, or tell you why. Keep all options short. Make exactly one answer correct. The correct_choice field must contain the letter (a, b, c, or d) of the actually correct option. The explanation must support the marked correct_choice. If the checkpoint includes math, use the same style as SANbox examples: standard LaTeX wrapped in $...$ for inline math or $$...$$ for display math. Do not emit bare x^2-style math when LaTeX is needed. Do not use markdown fences.',
+          'You create one short multiple-choice comprehension check for a K-5 child. Return raw JSON only with this exact shape: {"question":"...","choices":{"a":"...","b":"...","c":"...","d":"..."},"correct_choice":"a","explanation":"...","reason_for_check":"..."}. The checkpoint must test the concept that San just explained. Do not introduce a new topic. The child-facing question must be answerable by choosing A, B, C, or D only. Do not ask open-ended or free-response questions. Do not ask the child to explain, describe, or tell you why. Keep all options short. Make exactly one answer correct. The correct_choice field must contain the letter (a, b, c, or d) of the actually correct option. The explanation must support the marked correct_choice. If the checkpoint includes math, use the same style as San examples: standard LaTeX wrapped in $...$ for inline math or $$...$$ for display math. Do not emit bare x^2-style math when LaTeX is needed. Do not use markdown fences.',
       },
       {
         role: 'user',
-        content: `Child question: ${params.transcript}\nSANbox explanation: ${params.explanation}\n\nRecent conversation:\n${conversationContext}\n\nCreate a short comprehension checkpoint for free chat.`,
+        content: `Child question: ${params.transcript}\nSan explanation: ${params.explanation}\n\nRecent conversation:\n${conversationContext}\n\nCreate a short comprehension checkpoint for free chat.`,
       },
     ],
   })
@@ -821,7 +821,7 @@ async function generateForcedFreeChatCheckpoint(params: {
           .slice(-3)
           .map(
             (turn, index) =>
-              `Turn ${index + 1} child: ${turn.transcript}\nTurn ${index + 1} SANbox: ${turn.assistantText}`
+              `Turn ${index + 1} child: ${turn.transcript}\nTurn ${index + 1} San: ${turn.assistantText}`
           )
           .join('\n\n')
       : 'No recent conversation context.'
@@ -839,7 +839,7 @@ async function generateForcedFreeChatCheckpoint(params: {
       maxTokens: 460,
       purpose: 'forced free chat checkpoint retry',
       system:
-        'Return one valid topic-specific multiple-choice checkpoint as raw JSON only: {"question":"...","choices":{"a":"...","b":"...","c":"...","d":"..."},"correct_choice":"a","explanation":"...","reason_for_check":"..."}. The child explicitly requested a question. This must be a real problem about the current topic. Never write a generic summary question like "Which choice best matches what SANbox taught?" If the topic is math, write a concrete solve-this problem with actual numbers or equations. Exactly one choice must be correct. No open-ended prompts. No markdown fences.',
+        'Return one valid topic-specific multiple-choice checkpoint as raw JSON only: {"question":"...","choices":{"a":"...","b":"...","c":"...","d":"..."},"correct_choice":"a","explanation":"...","reason_for_check":"..."}. The child explicitly requested a question. This must be a real problem about the current topic. Never write a generic summary question like "Which choice best matches what San taught?" If the topic is math, write a concrete solve-this problem with actual numbers or equations. Exactly one choice must be correct. No open-ended prompts. No markdown fences.',
     },
   ] as const
 
@@ -856,7 +856,7 @@ async function generateForcedFreeChatCheckpoint(params: {
         },
         {
           role: 'user',
-          content: `Child request: ${params.transcript}\nSANbox explanation: ${params.explanation}\n\nRecent conversation:\n${conversationContext}\n\nCreate one real, topic-specific multiple-choice problem for the child right now.`,
+          content: `Child request: ${params.transcript}\nSan explanation: ${params.explanation}\n\nRecent conversation:\n${conversationContext}\n\nCreate one real, topic-specific multiple-choice problem for the child right now.`,
         },
       ],
     })
@@ -1040,7 +1040,7 @@ async function resolveAssistantWithOptionalTool(params: {
           : await generateFreeChatCheckpoint({
               transcript: params.transcript,
               explanation:
-                explanationParts.statementText ||
+                explanationParts?.statementText ||
                 normalizedExplanation.replace(/\?/g, '.'),
               recentTurns: params.recentTurns ?? [],
             })
@@ -1189,7 +1189,7 @@ export async function generateTeachingReply(params: {
         {
           role: 'system',
           content:
-            `You are SANbox, a voice-first AI learning companion for K-5 students. Respond with short, warm, concrete explanations. Use plain language, avoid markdown, avoid lists unless needed, and keep answers easy to read aloud. For math, you may use lightweight LaTeX in $...$ or $$...$$ when it helps. Supported math includes fractions, exponents, subscripts, square roots and n-th roots, multiplication and division symbols, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable: no matrices, no long derivations, no obscure commands. If the child uses rude, sexual, threatening, or age-inappropriate language, respond like a calm teacher: explain briefly why it is not okay, encourage safer and more respectful wording, and redirect to a safe topic. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
+            `You are San, a voice-first AI learning companion for K-5 students. Respond with short, warm, concrete explanations. Use plain language, avoid markdown, avoid lists unless needed, and keep answers easy to read aloud. For math, you may use lightweight LaTeX in $...$ or $$...$$ when it helps. Supported math includes fractions, exponents, subscripts, square roots and n-th roots, multiplication and division symbols, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable: no matrices, no long derivations, no obscure commands. If the child uses rude, sexual, threatening, or age-inappropriate language, respond like a calm teacher: explain briefly why it is not okay, encourage safer and more respectful wording, and redirect to a safe topic. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
         },
         ...(shouldStronglyPreferExample(transcript)
           ? [
@@ -1308,7 +1308,7 @@ export async function generateLessonPauseReply(params: {
         {
           role: 'system',
           content:
-            `You are SANbox, a voice-first AI learning companion for K-5 students. You are inside a scripted lesson. Answer the child's follow-up question briefly, clearly, and only about the current lesson concept. Do not open a new topic. Do not ask multiple follow-up questions. Do not change the lesson plan. Keep the reply short enough to read aloud comfortably. For math, you may use lightweight LaTeX in $...$ when it helps, including fractions, exponents, subscripts, roots, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
+            `You are San, a voice-first AI learning companion for K-5 students. You are inside a scripted lesson. Answer the child's follow-up question briefly, clearly, and only about the current lesson concept. Do not open a new topic. Do not ask multiple follow-up questions. Do not change the lesson plan. Keep the reply short enough to read aloud comfortably. For math, you may use lightweight LaTeX in $...$ when it helps, including fractions, exponents, subscripts, roots, inequalities, common Greek letters, trig functions, logs, infinity, arrows, and simple set notation. Keep the LaTeX minimal and readable. ${ASSISTANT_RESPONSE_FORMAT_INSTRUCTIONS}`,
         },
         {
           role: 'system',

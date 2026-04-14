@@ -4,7 +4,7 @@
 
 TeachBox is a voice-first AI learning companion for K-5 students.
 
-For the hackathon, the product is a thin Raspberry Pi client plus a cloud backend and a lightweight parent dashboard. The Pi is not responsible for LLM inference, heavy STT, or heavy TTS. It captures audio, sends requests, plays returned audio, and displays simple UI state.
+For the hackathon, the product is a browser-hosted Pi demo plus a cloud backend and a lightweight parent dashboard. The browser demo is not responsible for LLM inference, heavy STT, or heavy TTS. It captures audio, sends requests, plays returned audio, and displays simple UI state.
 
 ## Scope
 
@@ -42,7 +42,6 @@ components/         existing UI components
 docs/               product and frontend guidance
 lessons/            markdown lessons
 parent-dashboard/   coordination notes for parent UI workstream
-pi-client/          Raspberry Pi client workstream
 shared/             shared schemas, types, constants
 ```
 
@@ -51,6 +50,7 @@ shared/             shared schemas, types, constants
 Single deployable web app:
 
 - Next.js app hosts the parent dashboard
+- Next.js app hosts the browser Pi demo at `/pi`
 - Next.js API routes host the TeachBox backend contract
 - `backend/` contains the actual turn pipeline
 
@@ -58,9 +58,9 @@ This avoids spinning up multiple services during a 4-5 day hackathon.
 
 ## Main Interaction Flow
 
-1. Child presses the button on the Raspberry Pi
-2. Pi records audio locally
-3. Pi sends a multipart request to `POST /api/v1/session/turn`
+1. Child taps the browser Pi demo control
+2. The browser demo records audio locally
+3. The browser demo sends a multipart request to `POST /api/v1/session/turn`
 4. Backend pipeline performs:
    - speech-to-text
    - input safeguard classification
@@ -70,7 +70,7 @@ This avoids spinning up multiple services during a 4-5 day hackathon.
    - text-to-speech generation
    - turn logging
 5. Backend returns transcript, safeguard results, assistant text, Cosmo state, lesson pointer, and audio URL
-6. Pi plays returned audio and updates the UI
+6. The browser demo plays returned audio and updates the UI
 7. Parent dashboard reads session and turn data from backend APIs
 
 ## Cosmo UI States
@@ -203,17 +203,6 @@ Contains orchestration logic.
 - `lessons/` for loading markdown lessons
 - `storage/` for session and turn access
 
-### `pi-client/`
-
-Thin client only.
-
-- button
-- recording
-- playback
-- API requests
-- state machine
-- simple mouth animation control
-
 ### `parent-dashboard/`
 
 Consumes stable APIs and displays:
@@ -227,7 +216,7 @@ Consumes stable APIs and displays:
 
 1. Lock the shared API contract
 2. Build a stubbed backend pipeline that always returns valid contract shapes
-3. Build the Pi client against the stable endpoint
+3. Build the browser Pi demo against the stable endpoint
 4. Build the parent dashboard against the parent/session endpoints
 5. Swap real STT/TTS/LLM/safeguard providers in behind the pipeline
 
@@ -263,4 +252,4 @@ Current TeachBox-specific files added:
 - `app/api/v1/*`
 - `lessons/moon-basics.md`
 
-This is enough to let both the Pi side and parent side proceed in parallel.
+This is enough to let the browser Pi demo and parent side proceed in parallel.

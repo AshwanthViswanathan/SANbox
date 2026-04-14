@@ -29,7 +29,7 @@ Important constraints:
 Architecture direction:
 - single repo
 - parent dashboard and backend live in the Next.js app
-- Pi runtime is a separate thin client workstream in `pi-client/`
+- browser Pi demo lives at `/pi` inside the Next.js app
 - shared contracts live in `shared/`
 - lessons live as markdown in `lessons/`
 

@@ -175,11 +175,14 @@ export async function runGroqChatCompletionWithTools(options: GroqChatWithToolsO
   }
 }
 
-export async function runGroqTranscription(audio: File, model: string) {
+export async function runGroqTranscription(audio: File, model: string, prompt?: string | null) {
   const formData = new FormData()
   formData.set('file', audio)
   formData.set('model', model)
   formData.set('response_format', 'json')
+  if (prompt?.trim()) {
+    formData.set('prompt', prompt.trim())
+  }
 
   const response = await fetch(`${GROQ_API_BASE_URL}/audio/transcriptions`, {
     method: 'POST',
