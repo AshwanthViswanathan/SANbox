@@ -51,7 +51,7 @@ export function Hero() {
             </div>
 
             <p className="font-beach-accent text-lg font-semibold tracking-[0.08em] text-primary">Meet San</p>
-            <h1 className="font-beach-display mt-3 max-w-3xl text-5xl font-bold leading-[0.92] tracking-tight text-balance text-foreground drop-shadow-[0_8px_24px_rgba(252,247,225,0.45)] sm:text-6xl md:text-7xl">
+            <h1 className="font-beach-vibe mt-3 max-w-3xl text-6xl font-bold leading-[0.92] tracking-tight text-balance text-foreground drop-shadow-[0_8px_24px_rgba(252,247,225,0.45)] sm:text-7xl md:text-[5rem]">
               SANbox gives kids a calm voice guide and parents a clear session trail.
             </h1>
 

@@ -27,7 +27,7 @@ import {
 const IDLE_TEXT = 'Click the button and ask San a question!'
 const THINKING_TEXT = 'Thinking about that...'
 const NO_INPUT_TEXT = "I didn't hear anything. Try again."
-const MAX_INITIAL_SILENCE_MS = 2200
+const MAX_INITIAL_SILENCE_MS = 3500
 const MAX_POST_SPEECH_SILENCE_MS = 1500
 const MAX_RECORDING_MS = 12000
 const MIN_SPEECH_RMS_THRESHOLD = 0.009
@@ -1300,11 +1300,6 @@ export default function PiDisplayPage() {
         setFreeChatCheckpointRuntime(null)
         setIsExampleExpanded(false)
         setExampleNeedsExpansion(false)
-        if (lessonState?.status === 'active' && lessonAllowsVoiceInput) {
-          scheduleAutoRestart()
-        } else if (autoListenEnabled) {
-          scheduleAutoRestart()
-        }
         return
       }
 
@@ -1319,9 +1314,6 @@ export default function PiDisplayPage() {
           setFreeChatCheckpointRuntime(null)
           setIsExampleExpanded(false)
           setExampleNeedsExpansion(false)
-          if (autoListenEnabled) {
-            scheduleAutoRestart()
-          }
           return
         }
 
@@ -1404,16 +1396,6 @@ export default function PiDisplayPage() {
         setFreeChatCheckpointRuntime(null)
         setIsExampleExpanded(false)
         setExampleNeedsExpansion(false)
-
-        if (result.lesson_runtime?.input_mode === 'voice') {
-          scheduleAutoRestart()
-        } else if (
-          (reason === 'auto' || autoListenEnabled) &&
-          (!lessonState || lessonState.status !== 'active')
-        ) {
-          scheduleAutoRestart()
-        }
-
         return
       }
 
