@@ -7,6 +7,7 @@ const DEFAULT_GOOGLE_TTS_VOICE =
   process.env.TEACHBOX_TTS_VOICE_NAME ?? 'en-US-Chirp3-HD-Achernar'
 const DEFAULT_GOOGLE_TTS_LANGUAGE = process.env.TEACHBOX_TTS_LANGUAGE_CODE ?? 'en-US'
 const GOOGLE_TTS_AUDIO_ENCODING = 'MP3'
+const DEFAULT_TTS_SPEED = getConfiguredTtsSpeed()
 const GEMINI_TTS_SAMPLE_RATE = 24000
 const GEMINI_TTS_CHANNELS = 1
 const GEMINI_TTS_BITS_PER_SAMPLE = 16
@@ -55,6 +56,32 @@ let cachedAccessToken:
       expiresAt: number
     }
   | null = null
+
+function getConfiguredTtsSpeed() {
+  const raw = Number(process.env.TEACHBOX_TTS_SPEED ?? '1.15')
+
+  if (!Number.isFinite(raw)) {
+    return 1.15
+  }
+
+  return Math.min(2, Math.max(0.25, raw))
+}
+
+function getGeminiPacingInstruction(speed: number) {
+  if (speed >= 1.35) {
+    return 'Speak clearly at a fast pace.'
+  }
+
+  if (speed >= 1.1) {
+    return 'Speak clearly at a slightly brisk pace.'
+  }
+
+  if (speed <= 0.9) {
+    return 'Speak clearly at a slower, more deliberate pace.'
+  }
+
+  return 'Keep the pacing calm and friendly.'
+}
 
 function getGeminiApiKey() {
   const apiKey =
@@ -226,6 +253,7 @@ async function synthesizeSpeechWithGoogleCloud(params: { text: string }) {
       },
       audioConfig: {
         audioEncoding: GOOGLE_TTS_AUDIO_ENCODING,
+        speakingRate: DEFAULT_TTS_SPEED,
       },
     }),
   })
@@ -259,7 +287,7 @@ async function synthesizeSpeechWithGemini(params: { text: string }) {
           {
             parts: [
               {
-                text: `Read this exactly as a warm, encouraging K-5 learning companion. Keep the pacing calm and friendly.\n\n${text}`,
+                text: `Read this exactly as a warm, encouraging K-5 learning companion. ${getGeminiPacingInstruction(DEFAULT_TTS_SPEED)}\n\n${text}`,
               },
             ],
           },

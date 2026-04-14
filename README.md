@@ -85,6 +85,7 @@ This is especially important for device/session persistence outside the local no
 - `TEACHBOX_SAFEGUARD_MODEL`
 - `TEACHBOX_TTS_MODEL`
 - `TEACHBOX_TTS_VOICE_NAME`
+- `TEACHBOX_TTS_SPEED`
 - `TEACHBOX_TTS_LANGUAGE_CODE`
 
 ## Lessons
