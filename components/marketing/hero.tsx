@@ -1,11 +1,29 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRef, useState } from 'react'
 import { ArrowRight, LifeBuoy, Mic, ShieldAlert } from 'lucide-react'
 import shorelineImage from '@/docs/360_F_603755850_EmEXsTLLSljHRiazimrAya1HukruzkjO.jpg'
 
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+const PRE_SIGN_UP_FORM_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLScmsG8Vh71b03CKwSlM6tsFL_4tGIE7QnAVuWFS3GtgVRYJgw/viewform'
 
 export function Hero() {
+  const [activePreviewTab, setActivePreviewTab] = useState('overview')
+  const previewPanelRef = useRef<HTMLDivElement | null>(null)
+
+  const openPreSignUpTab = () => {
+    setActivePreviewTab('pre-sign-up')
+    previewPanelRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   return (
     <section className="relative min-h-[100svh] overflow-hidden px-0 pt-24">
       <div className="wave-grid absolute inset-0 opacity-30" />
@@ -48,14 +66,8 @@ export function Hero() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link
-                  href="https://docs.google.com/forms/d/e/1FAIpQLScmsG8Vh71b03CKwSlM6tsFL_4tGIE7QnAVuWFS3GtgVRYJgw/viewform?usp=publish-editor"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Early access
-                </Link>
+              <Button size="lg" variant="outline" onClick={openPreSignUpTab}>
+                Pre Sign Up
               </Button>
               <Button size="lg" variant="outline" asChild>
                 <Link href="/pi">Demo</Link>
@@ -78,14 +90,115 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="relative lg:pl-2">
-            <div className="h-full overflow-hidden p-0">
-              <DashboardPreview />
-            </div>
+          <div ref={previewPanelRef} className="relative lg:pl-2">
+            <Tabs value={activePreviewTab} onValueChange={setActivePreviewTab} className="h-full gap-4">
+              <div className="flex justify-center lg:justify-start">
+                <TabsList className="h-auto rounded-full border border-white/60 bg-white/72 p-1 shadow-[0_12px_28px_-18px_rgba(0,95,153,0.35)] backdrop-blur-sm">
+                  <TabsTrigger value="overview" className="rounded-full px-4 py-2">
+                    Product Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="pricing" className="rounded-full px-4 py-2">
+                    Pricing
+                  </TabsTrigger>
+                  <TabsTrigger value="pre-sign-up" className="rounded-full px-4 py-2">
+                    Pre Sign Up
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              <TabsContent value="overview" forceMount className="data-[state=inactive]:hidden">
+                <div className="h-full overflow-hidden p-0">
+                  <DashboardPreview />
+                </div>
+              </TabsContent>
+              <TabsContent value="pricing" forceMount className="data-[state=inactive]:hidden">
+                <PricingPreview />
+              </TabsContent>
+              <TabsContent value="pre-sign-up" forceMount className="data-[state=inactive]:hidden">
+                <PreSignUpPreview />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
     </section>
+  )
+}
+
+function PricingPreview() {
+  return (
+    <div className="rounded-[2rem] border border-white/45 bg-[linear-gradient(180deg,rgba(255,249,241,0.86),rgba(238,246,248,0.6))] p-5 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm sm:p-6">
+      <div className="space-y-2">
+        <p className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-primary">
+          Pricing
+        </p>
+        <h2 className="font-beach-display text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
+          Simple pricing for families.
+        </h2>
+        <p className="max-w-2xl text-sm leading-6 text-slate-800 sm:text-base">
+          SANbox is $40 for the box, plus $10 a month.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-[1.5rem] border border-white/70 bg-white/85 p-5 shadow-[0_14px_30px_-22px_rgba(0,95,153,0.3)]">
+          <p className="text-xs font-mono font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Hardware
+          </p>
+          <p className="mt-3 text-4xl font-bold text-slate-950">$40</p>
+          <p className="mt-2 text-sm leading-6 text-slate-800">
+            One-time cost for the SANbox device.
+          </p>
+        </div>
+        <div className="rounded-[1.5rem] border border-white/70 bg-white/85 p-5 shadow-[0_14px_30px_-22px_rgba(0,95,153,0.3)]">
+          <p className="text-xs font-mono font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Subscription
+          </p>
+          <p className="mt-3 text-4xl font-bold text-slate-950">$10</p>
+          <p className="mt-2 text-sm leading-6 text-slate-800">
+            Per month for the voice learning experience.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PreSignUpPreview() {
+  return (
+    <div className="rounded-[2rem] border border-white/45 bg-[linear-gradient(180deg,rgba(255,249,241,0.86),rgba(238,246,248,0.6))] p-4 shadow-[0_18px_40px_-28px_rgba(0,95,153,0.22)] backdrop-blur-sm sm:p-5">
+      <div className="mb-4 space-y-2 px-1">
+        <p className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-primary">
+          Pre Sign Up
+        </p>
+        <h2 className="font-beach-display text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
+          Join the early SANbox list.
+        </h2>
+        <p className="max-w-2xl text-sm leading-6 text-slate-800 sm:text-base">
+          Share your interest here and we will reach out as early access opens up.
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-[0_14px_30px_-22px_rgba(0,95,153,0.3)]">
+        <iframe
+          title="SANbox pre sign up form"
+          src={`${PRE_SIGN_UP_FORM_URL}?embedded=true`}
+          className="h-[720px] w-full"
+          loading="lazy"
+        >
+          Loading…
+        </iframe>
+      </div>
+      <p className="mt-3 px-1 text-xs text-muted-foreground">
+        If the embed does not load, open the form directly:{' '}
+        <Link
+          href={PRE_SIGN_UP_FORM_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-4"
+        >
+          pre sign up form
+        </Link>
+      </p>
+    </div>
   )
 }
 
