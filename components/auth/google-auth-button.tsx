@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
-
-const AUTH_NEXT_COOKIE = 'sanbox_auth_next'
+import { startGoogleAuth } from '@/lib/auth/google-auth'
 
 type GoogleAuthButtonProps = {
   mode: 'login' | 'signup'
@@ -25,20 +23,7 @@ export function GoogleAuthButton({ mode, nextPath = '/dashboard', className }: G
       setErrorMessage(null)
       setLoading(true)
 
-      const supabase = createClient()
-      document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent(nextPath)}; path=/; max-age=600; samesite=lax`
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-        },
-      })
-
-      if (error) {
-        throw error
-      }
+      await startGoogleAuth(nextPath)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google sign-in failed.'
       setErrorMessage(message)

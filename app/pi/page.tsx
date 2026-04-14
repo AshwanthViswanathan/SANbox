@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { CosmoFace } from '@/components/pi/cosmo-face'
-import { GoogleAuthButton } from '@/components/auth/google-auth-button'
 import { LatexText } from '@/components/pi/latex-text'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
+import { startGoogleAuth } from '@/lib/auth/google-auth'
+import { Button } from '@/components/ui/button'
 import type {
   CosmoState,
   DeviceLessonState,
@@ -13,7 +15,7 @@ import type {
   LessonRuntime,
   SessionTurnResponse,
 } from '@/shared/types'
-import { Mic, Activity, AlertCircle, Copy, Link2, RefreshCw, Square } from 'lucide-react'
+import { Mic, Activity, AlertCircle, Copy, Link2, Loader2, RefreshCw, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deviceLessonStateSchema,
@@ -58,6 +60,85 @@ class PlaybackInterruptedError extends Error {
 
 function isPlaybackInterruptedError(error: unknown) {
   return error instanceof PlaybackInterruptedError
+}
+
+type RemoteShortcut =
+  | 'primary'
+  | '1'
+  | '2'
+  | '3'
+  | '4'
+  | '5'
+  | '6'
+  | '7'
+  | '8'
+  | '9'
+  | '*'
+  | '#'
+  | 'a'
+  | 'b'
+  | 'c'
+  | 'd'
+
+const checkpointShortcutMap: Record<'1' | '2' | '3' | '4', 'a' | 'b' | 'c' | 'd'> = {
+  '1': 'a',
+  '2': 'b',
+  '3': 'c',
+  '4': 'd',
+}
+
+const choiceButtonShortcutLabel: Record<'a' | 'b' | 'c' | 'd', string> = {
+  a: '1 / A',
+  b: '2 / B',
+  c: '3 / C',
+  d: '4 / D',
+}
+
+function ShortcutBadge({ label, className }: { label: string; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border border-white/20 bg-black/20 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+        className
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
+function getRemoteShortcut(event: KeyboardEvent): RemoteShortcut | null {
+  const key = event.key.toLowerCase()
+
+  if (key === 'enter' || key === 'ok' || key === 'select' || key === 'return') {
+    return 'primary'
+  }
+
+  if (key === '1' || event.code === 'Numpad1') return '1'
+  if (key === '2' || event.code === 'Numpad2') return '2'
+  if (key === '3' || event.code === 'Numpad3') return '3'
+  if (key === '4' || event.code === 'Numpad4') return '4'
+  if (key === '5' || event.code === 'Numpad5') return '5'
+  if (key === '6' || event.code === 'Numpad6') return '6'
+  if (key === '7' || event.code === 'Numpad7') return '7'
+  if (key === '8' || event.code === 'Numpad8') return '8'
+  if (key === '9' || event.code === 'Numpad9') return '9'
+  if (key === '*' || key === 'multiply' || event.code === 'NumpadMultiply') return '*'
+  if (key === '#') return '#'
+  if (key === 'a' || key === 'b' || key === 'c' || key === 'd') return key
+
+  return null
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return (
+    target.isContentEditable ||
+    target.closest('input, textarea, select, [contenteditable="true"]') !== null
+  )
 }
 
 function makeBrowserId(prefix: string) {
@@ -444,6 +525,7 @@ function createTestToneDataUrl(durationMs = 700, sampleRate = 24000) {
 }
 
 export default function PiDisplayPage() {
+  const router = useRouter()
   const [state, setState] = useState<CosmoState>('idle')
   const [transcript, setTranscript] = useState(IDLE_TEXT)
   const [assistantText, setAssistantText] = useState('')
@@ -461,6 +543,9 @@ export default function PiDisplayPage() {
   const [debugTimings, setDebugTimings] = useState<Record<string, number> | null>(null)
   const [copiedState, setCopiedState] = useState<'device_id' | 'device_link' | null>(null)
   const [linkedAccountEmail, setLinkedAccountEmail] = useState<string | null>(null)
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
+  const [isAuthLoading, setIsAuthLoading] = useState(false)
+  const [isMicrophonePermissionPending, setIsMicrophonePermissionPending] = useState(false)
   const recorderStateRef = useRef<RecorderState | null>(null)
   const exampleContainerRef = useRef<HTMLDivElement | null>(null)
   const exampleContentRef = useRef<HTMLDivElement | null>(null)
@@ -648,28 +733,6 @@ export default function PiDisplayPage() {
       window.removeEventListener('focus', syncLessonState)
     }
   }, [lessonState?.status])
-
-  useEffect(() => {
-    if (
-      lessonInteraction?.runtime.input_mode !== 'choice' &&
-      freeChatCheckpointRuntime?.input_mode !== 'choice'
-    ) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase()
-      if (key === 'a' || key === 'b' || key === 'c' || key === 'd') {
-        event.preventDefault()
-        void submitCheckpointChoice(key)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [freeChatCheckpointRuntime?.input_mode, lessonInteraction?.runtime.input_mode])
 
   useEffect(() => {
     if (
@@ -1385,6 +1448,7 @@ export default function PiDisplayPage() {
       setTranscript('Listening...')
       setState('listening')
       setIsRecording(true)
+      setIsMicrophonePermissionPending(true)
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -1483,6 +1547,8 @@ export default function PiDisplayPage() {
       setTranscript(
         error instanceof Error ? error.message : 'Microphone access was denied.'
       )
+    } finally {
+      setIsMicrophonePermissionPending(false)
     }
   }
 
@@ -1507,15 +1573,250 @@ export default function PiDisplayPage() {
     ? `/pi?device_id=${encodeURIComponent(deviceIdRef.current)}`
     : '/pi'
 
-  const canInterruptSpeech =
-    !isRecording &&
-    !isLessonLoading &&
-    (state === 'speaking' || state === 'blocked') &&
-    lessonState?.status !== 'active'
   const activeChoiceChoices =
     lessonInteraction?.runtime.input_mode === 'choice'
       ? lessonInteraction.runtime.choices ?? null
       : freeChatCheckpointRuntime?.choices ?? null
+  const isLessonAssigned = lessonState?.status === 'assigned'
+  const isLessonActive = lessonState?.status === 'active'
+  const isCheckpointActive = Boolean(activeChoiceChoices)
+  const canInterruptSpeech =
+    !isRecording &&
+    !isLessonLoading &&
+    (state === 'speaking' || state === 'blocked') &&
+    !isLessonActive
+  const isMicButtonDisabled =
+    !isSupported ||
+    (isStoppingRef.current && !canInterruptSpeech) ||
+    (isLessonActive &&
+      !lessonAllowsVoiceInput &&
+      !isRecording) ||
+    isLessonLoading
+  const isStartLessonDisabled = !isLessonAssigned || isLessonLoading || isRecording
+  const isAutoListenDisabled = isLessonLoading || isLessonActive
+  const canToggleExample = Boolean(assistantExample) && (isExampleExpanded || exampleNeedsExpansion)
+  const showGoogleSignIn = !linkedAccountEmail
+
+  const toggleExamplePanel = () => {
+    if (!canToggleExample) {
+      return
+    }
+
+    if (isExampleExpanded) {
+      setIsExampleExpanded(false)
+      return
+    }
+
+    setIsExampleExpanded(true)
+  }
+
+  const toggleAutoListen = () => {
+    if (isAutoListenDisabled) {
+      return
+    }
+
+    const nextValue = !autoListenEnabled
+    setAutoListenEnabled(nextValue)
+    if (!nextValue) {
+      cancelAutoRestart()
+    }
+  }
+
+  const startNewSession = async () => {
+    if (isLessonLoading) {
+      return
+    }
+
+    cancelAutoRestart()
+    persistExampleAcrossAutoListenRef.current = false
+    preserveScreenOnPlaybackStopRef.current = false
+    cleanupRecorder()
+    stopActivePlayback()
+    const nextSessionId = makeBrowserId('session')
+    sessionIdRef.current = nextSessionId
+    window.localStorage.setItem('teachbox_demo_session_id', nextSessionId)
+    setAssistantText('')
+    setAssistantExample(null)
+    setFreeChatCheckpoint(null)
+    setFreeChatCheckpointRuntime(null)
+    setIsExampleExpanded(false)
+    setExampleNeedsExpansion(false)
+    setDebugTimings(null)
+    setLessonInteraction(null)
+    setIsRecording(false)
+    setCopiedState(null)
+    setState('idle')
+    setTranscript(IDLE_TEXT)
+
+    if (deviceIdRef.current && isLessonActive) {
+      await resetLessonState(deviceIdRef.current)
+      return
+    }
+
+    if (deviceIdRef.current) {
+      await fetchLessonState(deviceIdRef.current)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    if (!showGoogleSignIn || isAuthLoading) {
+      return
+    }
+
+    try {
+      setAuthErrorMessage(null)
+      setIsAuthLoading(true)
+      await startGoogleAuth(piLoginPath)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Google sign-in failed.'
+      setAuthErrorMessage(message)
+      setIsAuthLoading(false)
+      router.refresh()
+    }
+  }
+
+  const handlePrimaryAction = async () => {
+    if (isCheckpointActive) {
+      return
+    }
+
+    if (isLessonAssigned) {
+      if (!isStartLessonDisabled) {
+        await startLesson()
+      }
+      return
+    }
+
+    if (!isMicButtonDisabled) {
+      await toggleRecording()
+    }
+  }
+
+  const handleRemoteShortcut = async (shortcut: RemoteShortcut) => {
+    if (isAuthLoading || isMicrophonePermissionPending) {
+      return
+    }
+
+    if (isCheckpointActive) {
+      if (shortcut === 'primary') {
+        return
+      }
+
+      if (shortcut in checkpointShortcutMap && !isLessonLoading) {
+        await submitCheckpointChoice(
+          checkpointShortcutMap[shortcut as keyof typeof checkpointShortcutMap]
+        )
+        return
+      }
+
+      if (
+        (shortcut === 'a' || shortcut === 'b' || shortcut === 'c' || shortcut === 'd') &&
+        !isLessonLoading
+      ) {
+        await submitCheckpointChoice(shortcut)
+      }
+
+      return
+    }
+
+    switch (shortcut) {
+      case 'primary':
+        await handlePrimaryAction()
+        return
+      case '1':
+        if (!isMicButtonDisabled) {
+          await toggleRecording()
+        }
+        return
+      case '2':
+        if (!isLessonLoading) {
+          stopConversation()
+        }
+        return
+      case '3':
+        await startNewSession()
+        return
+      case '4':
+        toggleAutoListen()
+        return
+      case '5':
+        if (!isStartLessonDisabled) {
+          await startLesson()
+        }
+        return
+      case '6':
+        toggleExamplePanel()
+        return
+      case '7':
+        await copyDeviceReference('device_id')
+        return
+      case '8':
+        await copyDeviceReference('device_link')
+        return
+      case '9':
+        await handleGoogleSignIn()
+        return
+      case '*':
+      case '#':
+      case 'a':
+      case 'b':
+      case 'c':
+      case 'd':
+        return
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.defaultPrevented) {
+        return
+      }
+
+      const shortcut = getRemoteShortcut(event)
+      if (!shortcut) {
+        return
+      }
+
+      if (isEditableTarget(event.target)) {
+        return
+      }
+
+      if (document.visibilityState !== 'visible' || !document.hasFocus()) {
+        return
+      }
+
+      event.preventDefault()
+      void handleRemoteShortcut(shortcut)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [
+    assistantExample,
+    autoListenEnabled,
+    exampleNeedsExpansion,
+    freeChatCheckpoint,
+    freeChatCheckpointRuntime,
+    handleRemoteShortcut,
+    isAuthLoading,
+    isCheckpointActive,
+    isExampleExpanded,
+    isLessonActive,
+    isLessonAssigned,
+    isLessonLoading,
+    isMicrophonePermissionPending,
+    isRecording,
+    isSupported,
+    lessonAllowsVoiceInput,
+    lessonInteraction,
+    lessonState?.status,
+    linkedAccountEmail,
+    piLoginPath,
+    router,
+    state,
+  ])
 
   return (
     <div
@@ -1569,26 +1870,32 @@ export default function PiDisplayPage() {
                               onClick={(e) => {
                                 e.preventDefault()
                                 e.stopPropagation()
-                                setIsExampleExpanded(true)
+                                toggleExamplePanel()
                               }}
                               className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
                             >
-                              Show More
+                              <span className="inline-flex items-center gap-2">
+                                <ShortcutBadge label="6" />
+                                <span>Show More</span>
+                              </span>
                             </button>
                           )}
-                        {isExampleExpanded && (
-                          <button 
-                            type="button" 
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setIsExampleExpanded(false)
-                            }}
-                            className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
-                          >
-                            Minimize
-                          </button>
-                        )}
+                          {isExampleExpanded && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                toggleExamplePanel()
+                              }}
+                              className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <ShortcutBadge label="6" />
+                                <span>Minimize</span>
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div 
@@ -1650,37 +1957,36 @@ export default function PiDisplayPage() {
               </div>
 
               <div className="flex flex-col items-center gap-3 lg:col-start-2 lg:h-full lg:justify-end lg:pt-1">
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  disabled={
-                    !isSupported ||
-                    (isStoppingRef.current && !canInterruptSpeech) ||
-                    (lessonState?.status === 'active' &&
-                      !lessonAllowsVoiceInput &&
-                      !isRecording) ||
-                    isLessonLoading
-                  }
-                  className={cn(
-                    'h-20 w-20 rounded-full border-4 shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:h-24 sm:w-24',
-                    isRecording
-                      ? 'border-destructive bg-destructive text-destructive-foreground'
-                      : 'border-primary bg-primary text-primary-foreground'
-                  )}
-                >
-                  {isRecording ? (
-                    <Square className="mx-auto h-7 w-7 fill-current sm:h-8 sm:w-8" />
-                  ) : (
-                    <Mic className="mx-auto h-7 w-7 sm:h-8 sm:w-8" />
-                  )}
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => void toggleRecording()}
+                    disabled={isMicButtonDisabled}
+                    className={cn(
+                      'h-20 w-20 rounded-full border-4 shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:h-24 sm:w-24',
+                      isRecording
+                        ? 'border-destructive bg-destructive text-destructive-foreground'
+                        : 'border-primary bg-primary text-primary-foreground'
+                    )}
+                  >
+                    {isRecording ? (
+                      <Square className="mx-auto h-7 w-7 fill-current sm:h-8 sm:w-8" />
+                    ) : (
+                      <Mic className="mx-auto h-7 w-7 sm:h-8 sm:w-8" />
+                    )}
+                  </button>
+                  <ShortcutBadge
+                    label="1"
+                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 bg-surface/90 text-foreground"
+                  />
+                </div>
                 <p className="text-center text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">
                   {isRecording
                     ? 'Tap to stop'
                     : lessonState?.status === 'assigned'
                       ? 'Tap to talk or start lesson'
                       : lessonInteraction?.runtime.input_mode === 'choice'
-                        ? 'Use A, B, C, or D'
+                        ? 'Use 1, 2, 3, or 4'
                         : lessonState?.status === 'active' && !lessonAllowsVoiceInput
                           ? 'Lesson is guiding the next step'
                           : autoListenEnabled
@@ -1688,93 +1994,84 @@ export default function PiDisplayPage() {
                             : 'Tap to talk'}
                 </p>
                 <div className="flex max-w-4xl flex-wrap justify-center gap-2">
-                {lessonState?.status === 'assigned' && (
+                  {lessonState?.status === 'assigned' && (
+                    <button
+                      type="button"
+                      onClick={() => void startLesson()}
+                      disabled={isStartLessonDisabled}
+                      className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <ShortcutBadge label="5 / OK" className="text-primary-foreground" />
+                        <span>{isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}</span>
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => void startLesson()}
-                    disabled={isLessonLoading || isRecording}
-                    className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={stopConversation}
+                    disabled={isLessonLoading}
+                    className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}
+                    <span className="inline-flex items-center gap-2">
+                      <ShortcutBadge label="2" className="text-destructive-foreground" />
+                      <span>Stop Audio</span>
+                    </span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={stopConversation}
-                  disabled={isLessonLoading}
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Stop Audio
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    cancelAutoRestart()
-                    cleanupRecorder()
-                    stopActivePlayback()
-                    sessionIdRef.current = makeBrowserId('session')
-                    window.localStorage.setItem('teachbox_demo_session_id', sessionIdRef.current)
-                    setAssistantText('')
-                    setAssistantExample(null)
-                    setFreeChatCheckpoint(null)
-                    setFreeChatCheckpointRuntime(null)
-                    setIsExampleExpanded(false)
-                    setExampleNeedsExpansion(false)
-                    setDebugTimings(null)
-                    setLessonInteraction(null)
-                    setIsRecording(false)
-                    if (deviceIdRef.current && lessonState?.status === 'active') {
-                      await resetLessonState(deviceIdRef.current)
-                    } else if (deviceIdRef.current) {
-                      await fetchLessonState(deviceIdRef.current)
-                    }
-                    setState('idle')
-                    setTranscript(IDLE_TEXT)
-                  }}
-                  disabled={isLessonLoading}
-                  className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  New Session
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextValue = !autoListenEnabled
-                    setAutoListenEnabled(nextValue)
-                    if (!nextValue) {
-                      cancelAutoRestart()
-                    }
-                  }}
-                  disabled={isLessonLoading || lessonState?.status === 'active'}
-                  className={cn(
-                    'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
-                    autoListenEnabled
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  )}
-                >
-                  {autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => void startNewSession()}
+                    disabled={isLessonLoading}
+                    className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ShortcutBadge label="3" className="text-secondary-foreground" />
+                      <span>New Session</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleAutoListen}
+                    disabled={isAutoListenDisabled}
+                    className={cn(
+                      'px-4 py-2 text-xs font-medium rounded-md disabled:cursor-not-allowed disabled:opacity-50',
+                      autoListenEnabled
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ShortcutBadge
+                        label="4"
+                        className={cn(
+                          autoListenEnabled ? 'text-primary-foreground' : 'text-secondary-foreground'
+                        )}
+                      />
+                      <span>{autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}</span>
+                    </span>
+                  </button>
                 </div>
                 {activeChoiceChoices ? (
                   <div className="grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2">
-                  {(['a', 'b', 'c', 'd'] as const).map((choiceKey) => (
-                    <button
-                      key={choiceKey}
-                      type="button"
-                      onClick={() => void submitCheckpointChoice(choiceKey)}
-                      disabled={isLessonLoading}
-                      className="flex items-start gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <span className="shrink-0 font-mono uppercase">{choiceKey}.</span>
-                      <LatexText
-                        className="min-w-0 flex-1"
-                        text={
-                          activeChoiceChoices[choiceKey] ?? ''
-                        }
-                      />
-                    </button>
-                  ))}
+                    {(['a', 'b', 'c', 'd'] as const).map((choiceKey) => (
+                      <button
+                        key={choiceKey}
+                        type="button"
+                        onClick={() => void submitCheckpointChoice(choiceKey)}
+                        disabled={isLessonLoading}
+                        className="flex items-start gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <span className="shrink-0">
+                          <ShortcutBadge label={choiceButtonShortcutLabel[choiceKey]} className="text-foreground" />
+                        </span>
+                        <LatexText
+                          className="min-w-0 flex-1"
+                          text={
+                            activeChoiceChoices[choiceKey] ?? ''
+                          }
+                        />
+                      </button>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -1805,6 +2102,7 @@ export default function PiDisplayPage() {
                     onClick={() => void copyDeviceReference('device_id')}
                     className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
+                    <ShortcutBadge label="7" className="text-secondary-foreground" />
                     <Copy className="h-3.5 w-3.5" />
                     {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
                   </button>
@@ -1813,14 +2111,40 @@ export default function PiDisplayPage() {
                     onClick={() => void copyDeviceReference('device_link')}
                     className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
+                    <ShortcutBadge label="8" className="text-secondary-foreground" />
                     <Link2 className="h-3.5 w-3.5" />
                     {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
                   </button>
                 </div>
               </div>
               {!linkedAccountEmail ? (
-                <div className="mt-3">
-                  <GoogleAuthButton mode="login" nextPath={piLoginPath} className="w-full gap-2" />
+                <div className="mt-3 space-y-3">
+                  <Button
+                    type="button"
+                    className="w-full gap-2"
+                    onClick={() => void handleGoogleSignIn()}
+                    disabled={isAuthLoading}
+                  >
+                    <ShortcutBadge label="9" className="text-primary-foreground" />
+                    {isAuthLoading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <>
+                        <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            fill="currentColor"
+                            d="M12.24 10.285v3.821h5.445c-.22 1.414-1.648 4.145-5.445 4.145-3.278 0-5.95-2.716-5.95-6.065s2.672-6.065 5.95-6.065c1.865 0 3.11.794 3.823 1.477l2.598-2.51C16.999 3.54 14.84 2.75 12.24 2.75 7.167 2.75 3.05 6.866 3.05 11.94s4.117 9.19 9.19 9.19c5.302 0 8.818-3.723 8.818-8.973 0-.602-.066-1.06-.147-1.872H12.24Z"
+                          />
+                        </svg>
+                        <span>Continue with Google</span>
+                      </>
+                    )}
+                  </Button>
+                  {authErrorMessage && (
+                    <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {authErrorMessage}
+                    </p>
+                  )}
                 </div>
               ) : null}
             </div>

@@ -4,6 +4,9 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import type { CosmoState } from '@/shared/types'
 
+const FACE_ASSET_WIDTH = 423
+const FACE_ASSET_HEIGHT = 334
+
 interface CosmoFaceProps {
   state: CosmoState
   className?: string
@@ -75,17 +78,19 @@ export function CosmoFace({ state, className }: CosmoFaceProps) {
   return (
     <div
       className={cn(
-        'relative h-36 w-36 sm:h-44 sm:w-44 lg:h-[min(34vh,17rem)] lg:w-[min(34vh,17rem)]',
+        'relative h-36 w-36 shrink-0 overflow-hidden sm:h-44 sm:w-44 lg:h-[min(34vh,17rem)] lg:w-[min(34vh,17rem)]',
         className
       )}
     >
       <Image
         src={face.src}
         alt={face.alt}
-        fill
+        width={FACE_ASSET_WIDTH}
+        height={FACE_ASSET_HEIGHT}
         priority
+        unoptimized
         sizes="(max-width: 640px) 144px, (max-width: 1024px) 176px, 272px"
-        className="object-contain select-none"
+        className="block h-full w-full object-contain select-none"
       />
     </div>
   )
