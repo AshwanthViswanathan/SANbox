@@ -56,8 +56,33 @@ const SIMPLE_SYMBOL_MAP: Record<string, string> = {
   '\\right': ' ',
 }
 
+const RENDERABLE_LATEX_COMMANDS = [
+  '\\frac',
+  '\\tfrac',
+  '\\dfrac',
+  '\\sqrt',
+  ...Object.keys(SIMPLE_SYMBOL_MAP),
+]
+
+const RENDERABLE_LATEX_DELIMITER_PATTERN = /\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const RENDERABLE_LATEX_COMMAND_PATTERN = new RegExp(
+  `(?:${RENDERABLE_LATEX_COMMANDS.map(escapeRegex).join('|')})(?![a-zA-Z])`
+)
+
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim()
+}
+
+export function hasRenderableLatex(text: string) {
+  return (
+    RENDERABLE_LATEX_DELIMITER_PATTERN.test(text) ||
+    RENDERABLE_LATEX_COMMAND_PATTERN.test(text)
+  )
 }
 
 function findMatchingBrace(input: string, startIndex: number) {

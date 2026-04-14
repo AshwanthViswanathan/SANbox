@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CosmoFace } from '@/components/pi/cosmo-face'
-import { LatexText } from '@/components/pi/latex-text'
+import { LatexText, type LatexTextRenderMode } from '@/components/pi/latex-text'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { startGoogleAuth } from '@/lib/auth/google-auth'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,7 @@ const MIN_SPEECH_RMS_THRESHOLD = 0.009
 const NOISE_FLOOR_CALIBRATION_MS = 250
 const SPEECH_ACTIVATION_MS = 120
 const NOISE_FLOOR_MULTIPLIER = 1.8
+const LESSON_STATE_POLL_INTERVAL_MS = 12000
 
 type RecorderState = {
   stream: MediaStream
@@ -98,7 +99,7 @@ function ShortcutBadge({ label, className }: { label: string; className?: string
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border border-white/20 bg-black/20 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+        'inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-black',
         className
       )}
     >
@@ -193,6 +194,52 @@ function shouldPersistExampleForAutoListen(example: string | null) {
   return /\\(?:frac|sqrt|cdot|times|div|pm|leq|geq|neq|Delta|alpha|beta|theta|pi|Rightarrow|rightarrow|left|right)/.test(
     example
   ) || /[$^=+\-*/]/.test(example)
+}
+
+function areAssignedLessonsEqual(
+  left: DeviceLessonState['assigned_lesson'],
+  right: DeviceLessonState['assigned_lesson']
+) {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return left === right
+  }
+
+  return (
+    left.lesson_id === right.lesson_id &&
+    left.title === right.title &&
+    left.grade_band === right.grade_band &&
+    left.topic === right.topic &&
+    left.assigned_at === right.assigned_at &&
+    left.assigned_by_user_id === right.assigned_by_user_id
+  )
+}
+
+function areLessonStatesEquivalent(
+  left: DeviceLessonState | null,
+  right: DeviceLessonState | null
+) {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return left === right
+  }
+
+  return (
+    left.device_id === right.device_id &&
+    left.status === right.status &&
+    areAssignedLessonsEqual(left.assigned_lesson, right.assigned_lesson) &&
+    left.active_session_id === right.active_session_id &&
+    left.active_lesson_id === right.active_lesson_id &&
+    left.current_step_id === right.current_step_id &&
+    left.started_at === right.started_at &&
+    left.completed_at === right.completed_at
+  )
 }
 
 function dataUrlToPlayableSrc(dataUrl: string) {
@@ -528,6 +575,7 @@ export default function PiDisplayPage() {
   const router = useRouter()
   const [state, setState] = useState<CosmoState>('idle')
   const [transcript, setTranscript] = useState(IDLE_TEXT)
+  const [transcriptRenderMode, setTranscriptRenderMode] = useState<LatexTextRenderMode>('plain')
   const [assistantText, setAssistantText] = useState('')
   const [assistantExample, setAssistantExample] = useState<string | null>(null)
   const [freeChatCheckpoint, setFreeChatCheckpoint] = useState<InteractiveCheckpoint | null>(null)
@@ -557,13 +605,22 @@ export default function PiDisplayPage() {
   const activePlaybackStopRef = useRef<(() => void) | null>(null)
   const persistExampleAcrossAutoListenRef = useRef(false)
   const preserveScreenOnPlaybackStopRef = useRef(false)
+  const lastClaimedDeviceKeyRef = useRef<string | null>(null)
+
+  const updateTranscript = (
+    nextTranscript: string,
+    renderMode: LatexTextRenderMode = 'plain'
+  ) => {
+    setTranscript(nextTranscript)
+    setTranscriptRenderMode(renderMode)
+  }
 
   const interruptPlaybackAndStartRecording = () => {
     cancelAutoRestart()
     preserveScreenOnPlaybackStopRef.current = true
     stopActivePlayback()
     setDebugTimings(null)
-    setTranscript('Listening...')
+    updateTranscript('Listening...')
     setState('listening')
 
     window.setTimeout(() => {
@@ -574,33 +631,45 @@ export default function PiDisplayPage() {
     }, 0)
   }
 
-  async function refreshLinkedAccount() {
+  async function syncLinkedAccountAndClaim() {
+    let user: { id: string; email?: string | null } | null = null
+
     try {
       const supabase = createSupabaseClient()
       const {
-        data: { user },
+        data: { user: currentUser },
       } = await supabase.auth.getUser()
 
-      setLinkedAccountEmail(user?.email ?? null)
+      user = currentUser
     } catch {
-      setLinkedAccountEmail(null)
+      setLinkedAccountEmail((current) => (current === null ? current : null))
+      lastClaimedDeviceKeyRef.current = null
+      return
     }
-  }
 
-  async function claimSignedInDevice() {
+    const nextLinkedAccountEmail = user?.email ?? null
+    setLinkedAccountEmail((current) =>
+      current === nextLinkedAccountEmail ? current : nextLinkedAccountEmail
+    )
+
+    if (!user || !deviceIdRef.current) {
+      lastClaimedDeviceKeyRef.current = null
+      return
+    }
+
+    const claimKey = `${user.id}:${deviceIdRef.current}`
+    if (lastClaimedDeviceKeyRef.current === claimKey) {
+      return
+    }
+
     try {
-      const supabase = createSupabaseClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user || !deviceIdRef.current) {
-        return
-      }
-
-      await fetch(`/api/v1/devices/${deviceIdRef.current}/claim`, {
+      const response = await fetch(`/api/v1/devices/${deviceIdRef.current}/claim`, {
         method: 'POST',
       })
+
+      if (response.ok) {
+        lastClaimedDeviceKeyRef.current = claimKey
+      }
     } catch {
       // Keep the demo usable even if the claim write fails transiently.
     }
@@ -694,20 +763,20 @@ export default function PiDisplayPage() {
 
     if (!supported) {
       setState('error')
-      setTranscript('This browser does not support microphone recording.')
+      updateTranscript('This browser does not support microphone recording.')
       return
     }
 
     deviceIdRef.current = getOrCreateDemoDeviceId()
     sessionIdRef.current = getOrCreateStorageId('teachbox_demo_session_id', 'session')
 
-    void refreshLinkedAccount()
-    void claimSignedInDevice()
+    void syncLinkedAccountAndClaim()
     void fetchLessonState(deviceIdRef.current)
 
     const syncLessonState = () => {
-      void refreshLinkedAccount()
-      void claimSignedInDevice()
+      if (document.visibilityState !== 'visible') {
+        return
+      }
 
       if (!deviceIdRef.current || lessonState?.status === 'active') {
         return
@@ -716,8 +785,18 @@ export default function PiDisplayPage() {
       void fetchLessonState(deviceIdRef.current)
     }
 
-    const intervalId = window.setInterval(syncLessonState, 3000)
-    window.addEventListener('focus', syncLessonState)
+    const handleWindowFocus = () => {
+      void syncLinkedAccountAndClaim()
+
+      if (!deviceIdRef.current) {
+        return
+      }
+
+      void fetchLessonState(deviceIdRef.current)
+    }
+
+    const intervalId = window.setInterval(syncLessonState, LESSON_STATE_POLL_INTERVAL_MS)
+    window.addEventListener('focus', handleWindowFocus)
 
     return () => {
       const recorderState = recorderStateRef.current
@@ -730,7 +809,7 @@ export default function PiDisplayPage() {
         window.clearTimeout(autoRestartTimeoutRef.current)
       }
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', syncLessonState)
+      window.removeEventListener('focus', handleWindowFocus)
     }
   }, [lessonState?.status])
 
@@ -797,7 +876,7 @@ export default function PiDisplayPage() {
 
       const payload = deviceLessonStateSchema.parse(await response.json())
       if (applyState) {
-        setLessonState(payload)
+        setLessonState((current) => (areLessonStatesEquivalent(current, payload) ? current : payload))
       }
 
       if (payload.active_session_id) {
@@ -901,7 +980,7 @@ export default function PiDisplayPage() {
     setFreeChatCheckpointRuntime(null)
     setIsExampleExpanded(false)
     setExampleNeedsExpansion(false)
-    setTranscript(result.runtime.prompt_text)
+    updateTranscript(result.runtime.prompt_text, 'auto')
     setState(
       result.runtime.input_mode === 'none'
         ? 'speaking'
@@ -930,7 +1009,7 @@ export default function PiDisplayPage() {
     if (result.runtime.is_complete) {
       persistExampleAcrossAutoListenRef.current = false
       setState('idle')
-      setTranscript('Lesson complete.')
+      updateTranscript('Lesson complete.')
       setAssistantText(result.runtime.prompt_text)
       setAssistantExample(null)
       setFreeChatCheckpoint(null)
@@ -948,7 +1027,7 @@ export default function PiDisplayPage() {
 
     setState('idle')
     persistExampleAcrossAutoListenRef.current = false
-    setTranscript(result.runtime.prompt_text)
+    updateTranscript(result.runtime.prompt_text, 'auto')
     setAssistantExample(null)
     setFreeChatCheckpoint(null)
     setFreeChatCheckpointRuntime(null)
@@ -1018,7 +1097,7 @@ export default function PiDisplayPage() {
       }
     } catch (error) {
       setState('error')
-      setTranscript(error instanceof Error ? error.message : 'Unable to start lesson.')
+      updateTranscript(error instanceof Error ? error.message : 'Unable to start lesson.')
     } finally {
       setIsLessonLoading(false)
     }
@@ -1055,7 +1134,7 @@ export default function PiDisplayPage() {
       await handleLessonInteraction(parsed)
     } catch (error) {
       setState('error')
-      setTranscript(error instanceof Error ? error.message : 'Unable to continue lesson.')
+      updateTranscript(error instanceof Error ? error.message : 'Unable to continue lesson.')
     } finally {
       setIsLessonLoading(false)
     }
@@ -1127,7 +1206,7 @@ export default function PiDisplayPage() {
 
       const result = sessionTurnResponseSchema.parse(payload)
       setDebugTimings(result.debug?.timings_ms ?? null)
-      setTranscript(result.transcript)
+      updateTranscript(result.transcript)
       setAssistantText(result.assistant.text)
       setAssistantExample(result.assistant.example ?? null)
       setFreeChatCheckpoint(result.interactive_checkpoint ?? null)
@@ -1147,7 +1226,7 @@ export default function PiDisplayPage() {
           activePlaybackStopRef
         )
         setState('idle')
-        setTranscript(IDLE_TEXT)
+        updateTranscript(IDLE_TEXT)
         if (autoListenEnabled) {
           scheduleAutoRestart()
         }
@@ -1163,7 +1242,7 @@ export default function PiDisplayPage() {
       }
     } catch (error) {
       setState('error')
-      setTranscript(
+      updateTranscript(
         error instanceof Error ? error.message : 'Unable to submit checkpoint answer.'
       )
     } finally {
@@ -1208,7 +1287,7 @@ export default function PiDisplayPage() {
       if (!recorderState.speechDetected) {
         persistExampleAcrossAutoListenRef.current = false
         setState('idle')
-        setTranscript(
+        updateTranscript(
           reason === 'manual' && elapsedMs < 400
             ? 'Hold the button a little longer before releasing.'
             : NO_INPUT_TEXT
@@ -1231,7 +1310,7 @@ export default function PiDisplayPage() {
         if (elapsedMs < 400) {
           persistExampleAcrossAutoListenRef.current = false
           setState('idle')
-          setTranscript('Hold the button a little longer before releasing.')
+          updateTranscript('Hold the button a little longer before releasing.')
           setAssistantText('')
           setAssistantExample(null)
           setFreeChatCheckpoint(null)
@@ -1262,7 +1341,7 @@ export default function PiDisplayPage() {
       }
 
       setState('thinking')
-      setTranscript(THINKING_TEXT)
+      updateTranscript(THINKING_TEXT)
 
       const response = await fetch('/api/v1/demo/turn', {
         method: 'POST',
@@ -1286,7 +1365,7 @@ export default function PiDisplayPage() {
           : null
       const nextTranscript = freeChatCheckpointRuntime?.prompt_text ?? result.transcript
       setDebugTimings(result.debug?.timings_ms ?? null)
-      setTranscript(nextTranscript)
+      updateTranscript(nextTranscript, freeChatCheckpointRuntime ? 'auto' : 'plain')
       setAssistantText(result.assistant.text)
       setAssistantExample(result.assistant.example ?? null)
       setFreeChatCheckpoint(result.interactive_checkpoint ?? null)
@@ -1316,7 +1395,7 @@ export default function PiDisplayPage() {
       if (isNoInputResult) {
         persistExampleAcrossAutoListenRef.current = false
         setState('idle')
-        setTranscript(result.transcript)
+        updateTranscript(result.transcript)
         setAssistantText('')
         setAssistantExample(null)
         setFreeChatCheckpoint(null)
@@ -1354,7 +1433,7 @@ export default function PiDisplayPage() {
         }
 
         if (result.lesson_runtime?.input_mode === 'voice') {
-          setTranscript(
+          updateTranscript(
             result.lesson_runtime.followups_remaining === 1
               ? 'Ask one more question about this part if you want.'
               : 'Ask a question about this part.'
@@ -1368,7 +1447,7 @@ export default function PiDisplayPage() {
           return
         }
 
-        setTranscript(IDLE_TEXT)
+        updateTranscript(IDLE_TEXT)
         if (
           (reason === 'auto' || autoListenEnabled) &&
           (!lessonState || lessonState.status !== 'active')
@@ -1383,7 +1462,7 @@ export default function PiDisplayPage() {
           persistExampleAcrossAutoListenRef.current = false
           setState('idle')
           if (!preserveScreen) {
-            setTranscript(IDLE_TEXT)
+            updateTranscript(IDLE_TEXT)
             setAssistantText('')
             setAssistantExample(null)
             setFreeChatCheckpoint(null)
@@ -1394,7 +1473,7 @@ export default function PiDisplayPage() {
           return
         }
         setState('error')
-        setTranscript(
+        updateTranscript(
           serverTtsError
             ? `Server TTS failed: ${serverTtsError}`
             : playbackError instanceof Error
@@ -1408,7 +1487,7 @@ export default function PiDisplayPage() {
     }
     } catch (error) {
       setState('error')
-      setTranscript(error instanceof Error ? error.message : 'Voice request failed.')
+      updateTranscript(error instanceof Error ? error.message : 'Voice request failed.')
     } finally {
       isStoppingRef.current = false
     }
@@ -1445,7 +1524,7 @@ export default function PiDisplayPage() {
         setIsExampleExpanded(false)
         setExampleNeedsExpansion(false)
       }
-      setTranscript('Listening...')
+      updateTranscript('Listening...')
       setState('listening')
       setIsRecording(true)
       setIsMicrophonePermissionPending(true)
@@ -1544,7 +1623,7 @@ export default function PiDisplayPage() {
     } catch (error) {
       setIsRecording(false)
       setState('error')
-      setTranscript(
+      updateTranscript(
         error instanceof Error ? error.message : 'Microphone access was denied.'
       )
     } finally {
@@ -1646,7 +1725,7 @@ export default function PiDisplayPage() {
     setIsRecording(false)
     setCopiedState(null)
     setState('idle')
-    setTranscript(IDLE_TEXT)
+    updateTranscript(IDLE_TEXT)
 
     if (deviceIdRef.current && isLessonActive) {
       await resetLessonState(deviceIdRef.current)
@@ -1827,7 +1906,7 @@ export default function PiDisplayPage() {
     >
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-2">
         <div className="flex min-h-0 flex-1 items-stretch justify-center">
-          <div className="relative flex h-full w-full flex-col rounded-[2rem] border border-white/20 bg-white/10 px-4 py-4 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
+          <div className="relative flex h-full w-full flex-col rounded-[2rem] border border-border bg-background px-4 py-4 shadow-2xl sm:px-5 sm:py-5 lg:px-6 lg:py-5">
             <div className="flex w-full items-center justify-between opacity-80">
             <div className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider">
               {getStateIcon()}
@@ -1835,7 +1914,7 @@ export default function PiDisplayPage() {
             </div>
             <div className="flex items-center gap-2">
               {lessonState?.status && lessonState.status !== 'none' && (
-                <span className="px-2 py-1 rounded bg-accent/20 text-accent text-xs font-bold tracking-wider">
+                <span className="px-2 py-1 rounded bg-accent text-accent-foreground text-xs font-bold tracking-wider">
                   {lessonState.status === 'assigned' ? 'LESSON READY' : 'LESSON MODE'}
                 </span>
               )}
@@ -1854,12 +1933,12 @@ export default function PiDisplayPage() {
                   )}
                   {assistantExample ? (
                     <div className={cn(
-                      "w-full rounded-2xl border border-white/15 bg-white/8 px-5 py-3 text-left shadow-lg flex flex-col min-h-0",
+                      "w-full rounded-2xl border border-border bg-background px-5 py-3 text-left shadow-lg flex flex-col min-h-0",
                       isExampleExpanded
                         ? "max-h-[64dvh] sm:max-h-[68dvh] lg:flex-1 lg:h-full lg:max-h-none"
                         : ""
                     )}>
-                      <div className="flex items-center justify-between shrink-0 mb-1 z-10 relative bg-black/5 rounded-t-xl pb-1">
+                      <div className="flex items-center justify-between shrink-0 mb-1 z-10 relative bg-muted rounded-t-xl pb-1">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
                           Example
                         </p>
@@ -1872,7 +1951,7 @@ export default function PiDisplayPage() {
                                 e.stopPropagation()
                                 toggleExamplePanel()
                               }}
-                              className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
+                              className="text-[10px] font-medium text-secondary-foreground hover:bg-secondary/80 uppercase tracking-wider px-2 py-1 bg-secondary rounded cursor-pointer pointer-events-auto relative z-20"
                             >
                               <span className="inline-flex items-center gap-2">
                                 <ShortcutBadge label="6" />
@@ -1888,7 +1967,7 @@ export default function PiDisplayPage() {
                                 e.stopPropagation()
                                 toggleExamplePanel()
                               }}
-                              className="text-[10px] font-medium text-primary hover:text-primary/80 uppercase tracking-wider px-2 py-1 bg-primary/10 rounded cursor-pointer pointer-events-auto relative z-20"
+                              className="text-[10px] font-medium text-secondary-foreground hover:bg-secondary/80 uppercase tracking-wider px-2 py-1 bg-secondary rounded cursor-pointer pointer-events-auto relative z-20"
                             >
                               <span className="inline-flex items-center gap-2">
                                 <ShortcutBadge label="6" />
@@ -1911,7 +1990,7 @@ export default function PiDisplayPage() {
                           ref={exampleContentRef}
                           className="leading-[1.5] [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden"
                         >
-                          <LatexText text={assistantExample} />
+                          <LatexText text={assistantExample} renderMode="auto" />
                         </div>
                       </div>
                     </div>
@@ -1927,14 +2006,14 @@ export default function PiDisplayPage() {
                     '[display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden'
                   )}
                 >
-                  <LatexText text={transcript} />
+                  <LatexText text={transcript} renderMode={transcriptRenderMode} />
                 </p>
                 {assistantText ? (
-                  <div className="mx-auto w-full max-w-2xl rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-left lg:mx-0">
+                  <div className="mx-auto w-full max-w-2xl rounded-xl border border-border bg-background px-3 py-2 text-left lg:mx-0">
                     <div
                       className="text-sm leading-snug text-muted-foreground sm:text-base lg:text-lg [&_.katex-display]:m-0 [&_.katex-display]:py-0"
                     >
-                      <LatexText text={assistantText} />
+                      <LatexText text={assistantText} renderMode="auto" />
                     </div>
                   </div>
                 ) : null}
@@ -1977,7 +2056,7 @@ export default function PiDisplayPage() {
                   </button>
                   <ShortcutBadge
                     label="1"
-                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 bg-surface/90 text-foreground"
+                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 bg-surface text-black"
                   />
                 </div>
                 <p className="text-center text-[11px] font-mono uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">
@@ -2002,7 +2081,7 @@ export default function PiDisplayPage() {
                       className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="inline-flex items-center gap-2">
-                        <ShortcutBadge label="5 / OK" className="text-primary-foreground" />
+                        <ShortcutBadge label="5 / OK" className="text-black" />
                         <span>{isLessonLoading ? 'Starting Lesson...' : 'Start Lesson'}</span>
                       </span>
                     </button>
@@ -2014,7 +2093,7 @@ export default function PiDisplayPage() {
                     className="px-4 py-2 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <ShortcutBadge label="2" className="text-destructive-foreground" />
+                      <ShortcutBadge label="2" className="text-black" />
                       <span>Stop Audio</span>
                     </span>
                   </button>
@@ -2025,7 +2104,7 @@ export default function PiDisplayPage() {
                     className="px-4 py-2 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <ShortcutBadge label="3" className="text-secondary-foreground" />
+                      <ShortcutBadge label="3" className="text-black" />
                       <span>New Session</span>
                     </span>
                   </button>
@@ -2043,9 +2122,7 @@ export default function PiDisplayPage() {
                     <span className="inline-flex items-center gap-2">
                       <ShortcutBadge
                         label="4"
-                        className={cn(
-                          autoListenEnabled ? 'text-primary-foreground' : 'text-secondary-foreground'
-                        )}
+                        className="text-black"
                       />
                       <span>{autoListenEnabled ? 'Auto Listen On' : 'Auto Listen Off'}</span>
                     </span>
@@ -2059,13 +2136,14 @@ export default function PiDisplayPage() {
                         type="button"
                         onClick={() => void submitCheckpointChoice(choiceKey)}
                         disabled={isLessonLoading}
-                        className="flex items-start gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-left text-xs text-foreground hover:bg-white/15 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex items-start gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left text-xs text-foreground hover:bg-muted sm:text-sm disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <span className="shrink-0">
-                          <ShortcutBadge label={choiceButtonShortcutLabel[choiceKey]} className="text-foreground" />
+                          <ShortcutBadge label={choiceButtonShortcutLabel[choiceKey]} className="text-black" />
                         </span>
                         <LatexText
                           className="min-w-0 flex-1"
+                          renderMode="auto"
                           text={
                             activeChoiceChoices[choiceKey] ?? ''
                           }
@@ -2081,7 +2159,7 @@ export default function PiDisplayPage() {
 
         <div className="space-y-2 px-2">
           {deviceIdRef.current ? (
-            <div className="rounded-2xl border border-white/20 bg-white/10 px-3 py-3 text-left shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-white/10">
+            <div className="rounded-2xl border border-border bg-background px-3 py-3 text-left shadow-2xl">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-[11px]">
@@ -2102,7 +2180,7 @@ export default function PiDisplayPage() {
                     onClick={() => void copyDeviceReference('device_id')}
                     className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
-                    <ShortcutBadge label="7" className="text-secondary-foreground" />
+                    <ShortcutBadge label="7" className="text-black" />
                     <Copy className="h-3.5 w-3.5" />
                     {copiedState === 'device_id' ? 'Copied ID' : 'Copy ID'}
                   </button>
@@ -2111,7 +2189,7 @@ export default function PiDisplayPage() {
                     onClick={() => void copyDeviceReference('device_link')}
                     className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
-                    <ShortcutBadge label="8" className="text-secondary-foreground" />
+                    <ShortcutBadge label="8" className="text-black" />
                     <Link2 className="h-3.5 w-3.5" />
                     {copiedState === 'device_link' ? 'Copied Link' : 'Copy Link'}
                   </button>
@@ -2125,7 +2203,7 @@ export default function PiDisplayPage() {
                     onClick={() => void handleGoogleSignIn()}
                     disabled={isAuthLoading}
                   >
-                    <ShortcutBadge label="9" className="text-primary-foreground" />
+                    <ShortcutBadge label="9" className="text-black" />
                     {isAuthLoading ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
@@ -2141,7 +2219,7 @@ export default function PiDisplayPage() {
                     )}
                   </Button>
                   {authErrorMessage && (
-                    <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                    <p className="rounded-lg border border-destructive/30 bg-background px-3 py-2 text-xs text-destructive">
                       {authErrorMessage}
                     </p>
                   )}
