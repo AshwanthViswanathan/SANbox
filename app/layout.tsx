@@ -1,8 +1,21 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import Image from 'next/image'
+import localFont from 'next/font/local'
 import './globals.css'
 import 'katex/dist/katex.min.css'
+
+const beachVibe = localFont({
+  src: '../public/fonts/BeachVibe.ttf',
+  variable: '--font-beach-vibe-local',
+  display: 'swap',
+})
+
+const surfsUp = localFont({
+  src: '../public/fonts/SurfsUp.ttf',
+  variable: '--font-surfs-up-local',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'SANbox - AI Learning Companion',
@@ -27,7 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="relative min-h-screen font-sans antialiased" suppressHydrationWarning>
+      <body
+        className={`relative min-h-screen font-sans antialiased ${beachVibe.variable} ${surfsUp.variable}`}
+        suppressHydrationWarning
+      >
         <div aria-hidden="true" className="fixed inset-0 -z-20 overflow-hidden">
           <Image
             src="/beach-aerial-view.jpg"

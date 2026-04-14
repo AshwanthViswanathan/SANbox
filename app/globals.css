@@ -3,22 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@font-face {
-  font-family: 'SurfsUp';
-  src: url('/fonts/SurfsUp.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BeachVibe';
-  src: url('/fonts/BeachVibe.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   /* BeachBox coastal palette */
   --background: oklch(0.985 0.008 85);
@@ -178,11 +162,11 @@
     font-family: var(--font-accent);
   }
   .font-surfs-up {
-    font-family: 'SurfsUp', var(--font-display), cursive;
+    font-family: var(--font-surfs-up-local), var(--font-display), cursive;
     letter-spacing: 0.01em;
   }
   .font-beach-vibe {
-    font-family: 'BeachVibe', var(--font-display), cursive;
+    font-family: var(--font-beach-vibe-local), var(--font-display), cursive;
     letter-spacing: 0.01em;
   }
   .stitch-shell {
@@ -225,7 +209,7 @@
     @apply inline-flex items-center rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em];
   }
   .stitch-heading {
-    font-family: 'BeachVibe', var(--font-display), cursive;
+    font-family: var(--font-beach-vibe-local), var(--font-display), cursive;
     letter-spacing: 0.01em;
     @apply font-black tracking-tight text-[color:var(--foreground)];
   }
