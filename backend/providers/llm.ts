@@ -32,6 +32,16 @@ export type TeachingReplyPayload = {
   checkpointRuntime: LessonRuntime | null
 }
 
+const HARDCODED_INTRODUCTION_TEXT =
+  'Hi, I’m San. I’m an AI teacher. I help students learn by explaining concepts, giving examples, and checking understanding with questions.'
+
+const HARDCODED_INTRODUCTION_EXAMPLES = [
+  'Try asking:',
+  '- Explain fractions with a simple example.',
+  '- Show me a worked example of 24 divided by 6.',
+  '- Quiz me on the water cycle.',
+].join('\n')
+
 const assistantExampleToolSchema = z.object({
   name: z.enum(['generate_worked_math_example', 'generate_concept_example']),
 })
@@ -234,6 +244,19 @@ function explicitlyRequestsCheckpoint(transcript: string) {
     'quick check',
     'checkpoint',
   ].some((phrase) => normalized.includes(phrase))
+}
+
+function getHardcodedIntroductionReply(transcript: string): TeachingReplyPayload | null {
+  if (!/\bintroduce\b/i.test(transcript)) {
+    return null
+  }
+
+  return {
+    explanation: HARDCODED_INTRODUCTION_TEXT,
+    example: HARDCODED_INTRODUCTION_EXAMPLES,
+    checkpoint: null,
+    checkpointRuntime: null,
+  }
 }
 
 function extractJsonObject(value: string) {
@@ -1098,6 +1121,13 @@ export async function generateTeachingReply(params: {
     inputSafety,
     checkpointEligible = false,
   } = params
+  const hardcodedIntroductionReply =
+    inputSafety?.label === 'BORDERLINE' ? null : getHardcodedIntroductionReply(transcript)
+
+  if (hardcodedIntroductionReply) {
+    return hardcodedIntroductionReply
+  }
+
   const explicitExampleRequest = explicitlyRequestsExample(transcript)
   const explicitCheckpointRequest = explicitlyRequestsCheckpoint(transcript)
 
@@ -1287,6 +1317,12 @@ export async function generateLessonPauseReply(params: {
   teacherNote?: string | null
 }): Promise<TeachingReplyPayload> {
   const { transcript, lessonTitle, stepTitle, stepPrompt, teacherNote } = params
+  const hardcodedIntroductionReply = getHardcodedIntroductionReply(transcript)
+
+  if (hardcodedIntroductionReply) {
+    return hardcodedIntroductionReply
+  }
+
   const explicitExampleRequest = explicitlyRequestsExample(transcript)
   const forcedToolName = explicitExampleRequest
     ? isLikelyMathQuestion(transcript)

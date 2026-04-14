@@ -1503,7 +1503,6 @@ export default function PiDisplayPage() {
       !isSupported ||
       isRecording ||
       isStoppingRef.current ||
-      lessonState?.status === 'assigned' ||
       (lessonState?.status === 'active' && !lessonAllowsVoiceInput)
     ) {
       return
