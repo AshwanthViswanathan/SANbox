@@ -10,6 +10,15 @@ next.user-config.*
 # Environment variables
 .env*.local
 
+# Secrets and local cert material
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.ts.net
+*.ts.net.*
+
 # Common ignores
 node_modules
 .next/
